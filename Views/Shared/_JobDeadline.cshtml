@@ -1,0 +1,11 @@
+@model JobForFresher.Models.Job
+@if (Model.ExpiryDate.HasValue)
+{
+    var days = (Model.ExpiryDate.Value.Date - DateTime.Today).Days;
+    <p class="job-deadline @(days <= 3 ? "deadline-soon" : "")">
+    @if (days < 0) { <span>Applications closed</span> }
+    else if (days == 0) { <strong>Closes today</strong> }
+    else if (days == 1) { <strong>Closes tomorrow</strong> }
+    else { <span>Apply by @Model.ExpiryDate.Value.ToString("dd MMM yyyy")</span> }
+    </p>
+}

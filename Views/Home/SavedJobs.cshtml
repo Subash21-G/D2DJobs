@@ -1,0 +1,6 @@
+@model List<JobForFresher.Models.Job>
+@{ ViewData["Title"] = "Saved jobs | JobForFresher"; }
+<div class="saved-intro"><span class="eyebrow">YOUR SHORTLIST</span><h1>Saved opportunities</h1><p class="muted">Saved on this browser for up to six months. Clearing your cookies removes your shortlist.</p></div>
+@if (Model.Count == 0) { <div class="empty-state"><i class="fa-regular fa-bookmark" aria-hidden="true"></i><h2>Your next opportunity belongs here.</h2><p>Save a job from its details page to come back to it later.</p><a class="primary-button" asp-action="Index">Explore jobs</a></div> }
+else { <div class="saved-grid">@foreach (var job in Model) { <div><partial name="_JobCard" model="job" />@if (job.ExpiryDate < DateTime.Today) { <p class="muted">Applications closed</p> }<form method="post" asp-action="RemoveSavedJob" asp-route-id="@job.Id"><button class="secondary-button" type="submit">Remove from saved jobs</button></form></div> }</div> }
+

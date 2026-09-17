@@ -1,0 +1,46 @@
+@inject Microsoft.Extensions.Options.IOptions<JobForFresher.Models.AdvertisingOptions> AdSettings
+@{ var adminPage = ViewContext.RouteData.Values["controller"]?.ToString() is "Admin" or "Analytics"; }
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8" /><meta name="viewport" content="width=device-width, initial-scale=1" />
+<link rel="alternate" type="application/rss+xml" title="JobForFresher job alerts" href="@Url.RouteUrl("job-feed")" /><link rel="icon" href="~/favicon.ico" /><partial name="_SeoMeta" />
+<link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/css/bootstrap.min.css" rel="stylesheet" />
+<link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.2/css/all.min.css" rel="stylesheet" />
+@if (adminPage) { <link rel="stylesheet" href="~/css/site.css" asp-append-version="true" /> }
+<link rel="stylesheet" href="~/css/portal.css" asp-append-version="true" />
+@if (!adminPage && AdSettings.Value.IsReady && ViewData["ShowAds"] is true)
+{
+<script async src="https://pagead2.googlesyndication.com/pagead/js/adsbygoogle.js?client=@AdSettings.Value.PublisherId" crossorigin="anonymous"></script>
+}
+</head>
+<body class="@(adminPage ? "admin-page" : "public-page")">
+<a class="skip-link" href="#main-content">Skip to content</a>
+<div class="utility-bar"><div class="portal-container"><span>Fresh opportunities. Your next step.</span><div><a asp-controller="Home" asp-action="About">About us</a><a asp-controller="Home" asp-action="Contact">Contact</a></div></div></div>
+<header class="portal-header">
+<div class="portal-container masthead">
+<a class="brand" href="/" aria-label="JobForFresher home"><span class="brand-mark" aria-hidden="true">JF</span><span>Job<span class="brand-accent">ForFresher</span><small>START YOUR CAREER HERE</small></span></a>
+<div class="header-actions"><a class="saved-link" asp-controller="Home" asp-action="SavedJobs"><i class="fa-regular fa-bookmark" aria-hidden="true"></i> Saved jobs</a><button class="theme-toggle" type="button" aria-label="Toggle dark mode" aria-pressed="false"><i class="fa-regular fa-moon" aria-hidden="true"></i></button><button class="menu-toggle" type="button" aria-controls="primary-navigation" aria-expanded="false">Menu <i class="fa-solid fa-bars" aria-hidden="true"></i></button></div>
+</div>
+<nav id="primary-navigation" class="portal-nav" aria-label="Main navigation"><div class="portal-container">
+<a asp-controller="Home" asp-action="Index" asp-route-category="">All jobs</a>
+@foreach (var category in new[] { "Off Campus", "Walk-in", "IT Jobs", "Government Jobs", "Bank Jobs", "Internship Programs", "Work From Home Jobs" })
+{
+<a class="@(Context.Request.Query["category"] == category ? "selected" : "")"  asp-route="category" asp-route-categorySlug="@JobCategories.Slug(category)">@(category == "Internship Programs" ? "Internships" : category == "Government Jobs" ? "Govt jobs" : category == "Work From Home Jobs" ? "Remote jobs" : category)</a>
+}
+</div></nav>
+</header>
+<main id="main-content" class="portal-container page-content">@RenderBody()</main>
+<footer class="portal-footer"><div class="portal-container footer-grid">
+<div><a class="footer-brand" href="/">JobForFresher<span>.</span></a><p>Find fresher jobs, off campus drives, internships and opportunities across India.</p><small>Always check eligibility and apply through the employer's official website.</small></div>
+<div><h2>Explore jobs</h2><a asp-controller="Home" asp-action="Alerts">Job alerts</a><a  asp-route="category" asp-route-categorySlug="@JobCategories.Slug("Freshers Jobs")">Freshers jobs</a><a  asp-route="category" asp-route-categorySlug="@JobCategories.Slug("Government Jobs")">Government jobs</a><a  asp-route="category" asp-route-categorySlug="@JobCategories.Slug("Internship Programs")">Internships</a><a asp-controller="Home" asp-action="SavedJobs">Saved jobs</a></div>
+<div><h2>JobForFresher</h2><a asp-controller="Home" asp-action="About">About us</a><a asp-controller="Home" asp-action="Contact">Contact us</a><a asp-controller="Home" asp-action="Advertise">Advertise with us</a><a asp-controller="Home" asp-action="PrivacyPolicy">Privacy policy</a><a asp-controller="Home" asp-action="Terms">Terms & conditions</a><a asp-controller="Home" asp-action="Disclaimer">Disclaimer</a></div>
+</div><div class="portal-container footer-bottom"><span>&copy; @DateTime.Now.Year JobForFresher</span><a asp-controller="Admin" asp-action="Login">Admin login</a></div></footer>
+<script src="~/lib/jquery/dist/jquery.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/js/bootstrap.bundle.min.js"></script>
+@if (adminPage) { <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.8/dist/chart.umd.min.js"></script> }
+<script src="~/js/portal.js" asp-append-version="true"></script>
+@await RenderSectionAsync("Scripts", required: false)
+</body></html>
+
+

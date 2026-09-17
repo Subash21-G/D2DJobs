@@ -1,0 +1,5 @@
+@model JobForFresher.Models.Job
+@{ ViewData["Title"]="Create job"; ViewData["Editing"]=false; }
+<div class="admin-heading"><div><span class="eyebrow">JOB LIBRARY / NEW LISTING</span><h1>Create an opportunity</h1><p class="muted">Give candidates the details they need to take their next step.</p></div><a asp-action="Index" class="secondary-button">Back to jobs</a></div>
+<partial name="_JobForm" model="@(Model ?? new Job())" />
+@section Scripts { <partial name="_ValidationScriptsPartial" /> }

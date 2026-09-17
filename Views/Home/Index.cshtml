@@ -1,0 +1,68 @@
+@model List<JobForFresher.Models.Job>
+@{
+int? batch = ViewBag.Batch;
+string qualification = ViewBag.Qualification ?? "";
+string category = ViewBag.Category ?? "", search = ViewBag.Search ?? "", location = ViewBag.Location ?? "", experience = ViewBag.Experience ?? "", sort = ViewBag.Sort ?? "latest";
+int current = ViewBag.CurrentPage, pages = ViewBag.TotalPages, total = ViewBag.ResultCount;
+var counts = ViewBag.CategoryCounts as Dictionary<string, int> ?? new();
+var trending = ViewBag.TrendingJobs as List<Job> ?? new();
+var popular = ViewBag.PopularJobs as List<Job> ?? new();
+var sections = ViewBag.CategorySections as Dictionary<string, List<Job>> ?? new();
+ViewData["ShowAds"] = Model.Count > 0;
+bool filtered = batch.HasValue || !string.IsNullOrWhiteSpace(category + search + location + experience + qualification);
+ViewData["Title"] = (string.IsNullOrEmpty(category) ? "Latest fresher jobs & off campus drives" : category) + " | JobForFresher";
+}
+<section class="discovery-intro"><div><span class="eyebrow">YOUR NEXT CHAPTER STARTS HERE</span><h1>@if(string.IsNullOrEmpty(category)){<text>Find your first <span>big opportunity.</span></text>}else{<text>@category</text>}</h1><p>Explore fresher jobs, off campus drives and internships. All in one place.</p></div><div class="intro-note"><strong>@ViewBag.TotalJobs</strong><span>active opportunities<br />to explore</span></div></section>
+<form method="get" asp-action="Index" class="search-panel" id="job-filter">
+<div class="search-field autocomplete-field"><label for="jobSearch">What are you looking for?</label><div class="input-icon"><i class="fa-solid fa-magnifying-glass" aria-hidden="true"></i><input type="search" id="jobSearch" name="search" value="@search" placeholder="Job title, company or skill" autocomplete="off" maxlength="150" aria-controls="suggestionsBox" /><div id="suggestionsBox" class="suggestions-box" hidden></div></div></div>
+<div class="search-field"><label for="location">Location</label><input id="location" name="location" value="@location" placeholder="City or region" maxlength="100" /></div>
+<div class="search-field"><label for="experience">Experience</label><select id="experience" name="experience"><option value="">Any experience</option>@foreach (var item in new[] { "Fresher", "0 - 1 Years", "1 - 2 Years", "2 - 4 Years" }) { <option value="@item" selected="@(experience == item)">@item</option> }</select></div>
+<div class="search-field"><label for="batch">Graduation year</label><input type="number" id="batch" name="batch" value="@batch" min="1990" max="2100" placeholder="Any batch" /></div><input type="hidden" name="qualification" value="@qualification" /><input type="hidden" name="category" value="@category" /><input type="hidden" name="sort" value="@sort" /><button class="primary-button" type="submit">Find jobs <span aria-hidden="true">&nearr;</span></button>
+</form>
+<div class="quick-links"><span>Popular locations</span>@foreach (var city in new[] { "Chennai", "Bangalore", "Hyderabad", "Pune", "Mumbai" }) { <a asp-action="Index" asp-route-location="@city">@city</a> }</div>
+<div class="qualification-links" aria-label="Browse by qualification"><strong>Jobs by qualification</strong>@foreach (var degree in new[] { "B.Tech", "B.E", "B.Sc", "BCA", "MCA", "MBA", "Diploma", "Any Degree" }) { <a class="@(qualification == degree ? "selected" : "")" asp-action="Index" asp-route-qualification="@degree">@degree</a> }</div>
+<div class="qualification-links"><strong>Jobs by batch</strong>@for(var year = DateTime.Today.Year-3; year <= DateTime.Today.Year+1; year++){<a asp-action="Index" asp-route-batch="@year">@year</a>}<a asp-action="Alerts">Get job alerts &rarr;</a></div><section class="category-strip" aria-label="Explore job categories">
+@foreach (var item in new[] { ("Off Campus", "Off campus", "fa-graduation-cap"), ("Walk-in", "Walk-in drives", "fa-person-walking"), ("IT Jobs", "IT & software", "fa-laptop-code"), ("Government Jobs", "Government", "fa-landmark"), ("Internship Programs", "Internships", "fa-seedling"), ("Work From Home Jobs", "Remote jobs", "fa-house-laptop") })
+{
+<a class="category-tile @(category == item.Item1 ? "selected" : "")" asp-route="category" asp-route-categorySlug="@JobCategories.Slug(item.Item1)"><i class="fa-solid @item.Item3" aria-hidden="true"></i><strong>@item.Item2</strong><span>@counts.GetValueOrDefault(item.Item1) openings</span></a>
+}
+</section>
+
+<div class="jobs-layout"><section aria-labelledby="results-heading">
+<div class="section-heading"><div><span class="eyebrow">TAKE THE NEXT STEP</span><h2 id="results-heading">@(filtered ? string.IsNullOrEmpty(category) ? "Search results" : category : "Latest opportunities") <span class="count-pill">@total</span></h2></div><div class="sort-control"><label for="sort">Sort by</label><select name="sort" id="sort" form="sort-form"><option value="latest" selected="@(sort == "latest")">Newest first</option><option value="popular" selected="@(sort == "popular")">Most popular</option><option value="closing" selected="@(sort == "closing")">Closing soon</option></select></div></div>
+<form id="sort-form" method="get" asp-action="Index"><input type="hidden" name="batch" value="@batch" /><input type="hidden" name="search" value="@search" /><div class="search-field"><label for="batch">Graduation year</label><input type="number" id="batch" name="batch" value="@batch" min="1990" max="2100" placeholder="Any batch" /></div><input type="hidden" name="qualification" value="@qualification" /><input type="hidden" name="category" value="@category" /><input type="hidden" name="location" value="@location" /><input type="hidden" name="experience" value="@experience" /><noscript><button type="submit">Update sort</button></noscript></form>
+@if (filtered) { <div class="active-filters"><span>Showing @total matching opportunities</span><a asp-action="Index">Clear filters ×</a></div> }
+<div class="job-list">@for (int i = 0; i < Model.Count; i++) { <partial name="_JobCard" model="Model[i]" /> @if (i == 3 && Model.Count > 4) { <partial name="Ads/_AdBox" model='@("ListingInline")' /> } }</div>
+@if (Model.Count == 0) { <div class="empty-state"><i class="fa-regular fa-folder-open" aria-hidden="true"></i><h3>No openings found here yet</h3><p>Try another category, location or keyword.</p><a class="primary-button" asp-action="Index">Browse all jobs</a></div> }
+@if (pages > 1)
+{
+<nav class="pagination-bar" aria-label="Job result pages"><span>Page @current of @pages</span><div>
+@if (current > 1) { <a aria-label="Previous page" asp-route="category" asp-route-page="@(current - 1)" asp-route-search="@search" asp-route-categorySlug="@JobCategories.Slug(category)" asp-route-location="@location" asp-route-experience="@experience" asp-route-sort="@sort" asp-route-qualification="@qualification" asp-route-batch="@batch">Previous</a> }
+@for (int p = Math.Max(1, current - 2); p <= Math.Min(pages, current + 2); p++) { <a class="@(p == current ? "selected" : "")" aria-current="@(p == current ? "page" : null)" asp-route="category" asp-route-page="@p" asp-route-search="@search" asp-route-categorySlug="@JobCategories.Slug(category)" asp-route-location="@location" asp-route-experience="@experience" asp-route-sort="@sort" asp-route-qualification="@qualification" asp-route-batch="@batch">@p</a> }
+@if (current < pages) { <a aria-label="Next page" asp-route="category" asp-route-page="@(current + 1)" asp-route-search="@search" asp-route-categorySlug="@JobCategories.Slug(category)" asp-route-location="@location" asp-route-experience="@experience" asp-route-sort="@sort" asp-route-qualification="@qualification" asp-route-batch="@batch">Next</a> }
+</div></nav>
+}
+</section><aside class="jobs-sidebar">
+<section class="sidebar-panel"><div class="panel-heading"><i class="fa-solid fa-arrow-trend-up" aria-hidden="true"></i><h2>Trending now</h2></div>@if (trending.Count == 0) { <p class="muted">New opportunities will appear here.</p> }@for (int i = 0; i < trending.Count; i++) { <a class="trending-item" asp-action="Details" asp-route-slug="@trending[i].Slug"><span class="rank">@((i + 1).ToString("00"))</span><span><strong>@trending[i].Title</strong><small>@trending[i].CompanyName · @trending[i].Location</small></span></a> }</section>
+<section class="sidebar-panel"><div class="panel-heading"><i class="fa-solid fa-layer-group" aria-hidden="true"></i><h2>Browse categories</h2></div>@foreach (var item in JobCategories.All) { <a class="category-row" asp-route="category" asp-route-categorySlug="@JobCategories.Slug(item)"><span>@item</span><span>@counts.GetValueOrDefault(item)</span></a> }</section>
+@if (popular.Count > 0) { <section class="sidebar-panel"><div class="panel-heading"><h2>Popular opportunities</h2></div>@foreach (var job in popular.Take(3)) { <a class="compact-job" asp-action="Details" asp-route-slug="@job.Slug"><strong>@job.Title</strong><small>@job.CompanyName</small></a> }</section> }
+<section class="sidebar-panel sponsor-invite"><span class="eyebrow">PARTNER WITH US</span><h2>Reach early-career talent</h2><p>Explore advertising placements for your brand or recruitment campaign.</p><a asp-action="Advertise">Explore partnerships &nearr;</a></section><section class="career-note"><span class="eyebrow">A LITTLE REMINDER</span><h2>Your first job is a beginning.</h2><p>Check the requirements, tailor your resume and apply through the official company website.</p><a asp-action="SavedJobs">View your saved jobs &nearr;</a></section>
+</aside></div>
+@if (!filtered && sections.Count > 0) { <section class="category-sections" aria-label="Latest jobs by category">@foreach (var group in sections) { <div class="sidebar-panel"><div class="section-heading"><h2>@group.Key</h2><a asp-route="category" asp-route-categorySlug="@JobCategories.Slug(group.Key)">View all &nearr;</a></div>@foreach (var job in group.Value) { <a class="compact-job" asp-action="Details" asp-route-slug="@job.Slug"><strong>@job.Title</strong><small>@job.CompanyName · @job.Location</small></a> }</div> }</section> }
+
+
+
+
+<section class="explore-panel" aria-labelledby="explore-heading">
+<span class="eyebrow">KEEP EXPLORING</span><h2 id="explore-heading">Find another opportunity that fits you</h2>
+<p>Compare roles, check the requirements and save the openings you want to revisit.</p>
+<div class="explore-actions">
+@if (current < pages) { <a class="primary-button" asp-route="category" asp-route-page="@(current + 1)" asp-route-search="@search" asp-route-categorySlug="@JobCategories.Slug(category)" asp-route-location="@location" asp-route-experience="@experience" asp-route-sort="@sort" asp-route-qualification="@qualification" asp-route-batch="@batch">Explore the next page &rarr;</a> }
+<a class="secondary-button" asp-action="Index" asp-route-sort="closing">See jobs closing soon</a><a class="secondary-button" asp-action="SavedJobs">Review saved jobs</a>
+</div>
+</section>
+<section class="career-guide" aria-labelledby="guide-heading"><h2 id="guide-heading">Make your next application count</h2><div class="guide-grid">
+<article><span class="eyebrow">01 · CHECK THE FIT</span><h3>Start with eligibility</h3><p>Check the qualification, experience, location and closing date. Read the employer's official requirements before applying.</p></article>
+<article><span class="eyebrow">02 · GET READY</span><h3>Show relevant work</h3><p>Highlight projects, internships and skills that match the role. Keep your resume clear and your contact details current.</p></article>
+<article><span class="eyebrow">03 · STAY ORGANIZED</span><h3>Build your shortlist</h3><p>Save promising jobs in this browser and track applications yourself. Never pay anyone to guarantee a job.</p></article>
+</div></section>

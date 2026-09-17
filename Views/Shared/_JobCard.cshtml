@@ -1,0 +1,8 @@
+@model JobForFresher.Models.Job
+<article class="opportunity-card">
+<div class="job-card-top"><div class="company-avatar">@if (!string.IsNullOrEmpty(Model.CompanyLogo)) { <img src="~/uploads/logos/@Model.CompanyLogo" alt="@Model.CompanyName logo" loading="lazy" /> } else { <span>@(string.IsNullOrWhiteSpace(Model.CompanyName) ? "JF" : Model.CompanyName[..1].ToUpperInvariant())</span> }</div><div class="company-heading"><span>@Model.CompanyName</span><h3><a asp-controller="Home" asp-action="Details" asp-route-slug="@Model.Slug">@Model.Title</a></h3></div>@if (Model.IsFeatured) { <span class="featured-badge">Featured</span> }</div>
+<div class="job-facts"><span><i class="fa-solid fa-location-dot" aria-hidden="true"></i> @Model.Location</span><span><i class="fa-solid fa-briefcase" aria-hidden="true"></i> @Model.Experience</span>@if (!string.IsNullOrWhiteSpace(Model.Qualification)) { <span><i class="fa-solid fa-graduation-cap" aria-hidden="true"></i> @Model.Qualification</span> }</div>
+<partial name="_JobDeadline" model="Model" />
+<div class="job-card-bottom"><div class="job-tags"><a  asp-route="category" asp-route-categorySlug="@JobCategories.Slug(Model.Category)">@Model.Category</a>@if (!string.IsNullOrWhiteSpace(Model.JobType)) { <span>@Model.JobType</span> }<small>Posted @Model.PostedDate.ToString("dd MMM yyyy")</small></div><a class="details-link" asp-controller="Home" asp-action="Details" asp-route-slug="@Model.Slug">View details ↗</a></div>
+</article>
+

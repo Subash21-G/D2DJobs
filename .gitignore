@@ -1,0 +1,14 @@
+bin/
+obj/
+.mobile-check/
+.upgrade-backup/
+App_Data/
+artifacts/
+*.user
+appsettings.Local.json.vs/
+bin/
+obj/
+.review-artifacts/
+.review-build/
+/.vs/
+appsettings.Local.json

@@ -1,0 +1,5 @@
+@{ ViewData["Title"] = "Admin sign in"; }
+<div class="admin-login"><div class="login-intro"><span class="eyebrow">YOUR PUBLISHING WORKSPACE</span><h1>Good opportunities<br />start here.</h1><p>Keep listings current, help freshers find their next step, and follow your site's performance.</p><div class="login-caption">JobForFresher / Admin</div></div>
+<section class="admin-panel login-panel"><span class="eyebrow">WELCOME BACK</span><h2>Sign in to your workspace</h2><p class="muted">Use your administrator account to continue.</p>
+@if (ViewBag.Error != null) { <p class="alert alert-danger" role="alert">@ViewBag.Error</p> }
+<form asp-action="Login" method="post"><div class="admin-field"><label for="userName">Username</label><input id="userName" name="userName" autocomplete="username" required /></div><div class="admin-field"><label for="password">Password</label><input id="password" name="password" type="password" autocomplete="current-password" required /></div><button type="submit" class="primary-button">Sign in →</button></form><small class="muted">Authorized administrators only.</small></section></div>

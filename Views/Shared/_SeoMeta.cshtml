@@ -1,0 +1,20 @@
+@{
+    var title = ViewData["Title"] ?? "JobForFresher";
+    var description = ViewData["MetaDescription"] ?? "Explore fresher jobs, off campus drives, walk-in interviews, government jobs and internships across India. Check eligibility and apply online.";
+    var controller = ViewContext.RouteData.Values["controller"]?.ToString();
+    var action = ViewContext.RouteData.Values["action"]?.ToString();
+    bool noIndex = controller is "Admin" or "Analytics" or "Settings" || action is "SavedJobs" or "Error" || Context.Response.StatusCode >= 400 || Context.Request.Query.Count > 0;
+    var canonical = ViewData["Canonical"] as string ?? $"{Context.Request.Scheme}://{Context.Request.Host}{Context.Request.PathBase}{Context.Request.Path}{Context.Request.QueryString}";
+}
+<title>@title</title>
+<meta name="description" content="@description" />
+<meta name="robots" content="@(noIndex ? "noindex, follow" : "index, follow")" />
+<link rel="canonical" href="@canonical" />
+<meta property="og:title" content="@title" />
+<meta property="og:description" content="@description" />
+<meta property="og:type" content="website" />
+<meta property="og:url" content="@canonical" />
+<meta property="og:site_name" content="JobForFresher" />
+<meta name="twitter:card" content="summary" />
+<meta name="twitter:title" content="@title" />
+<meta name="twitter:description" content="@description" />

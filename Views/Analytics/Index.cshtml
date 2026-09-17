@@ -1,0 +1,29 @@
+@model List<JobForFresher.Models.DailyAnalytics>
+@{
+    ViewData["Title"] = "Traffic & ads | Admin";
+    long views = Model.Sum(r => r.PageViews);
+    var reports = Model.Where(r => r.ReportUpdatedUtc.HasValue).ToList();
+    long impressions = reports.Sum(r => r.AdImpressions ?? 0), clicks = reports.Sum(r => r.AdClicks ?? 0);
+}
+<div class="section-heading"><h1>Traffic &amp; ads</h1><a asp-controller="Admin" asp-action="Index" class="secondary-button">Back to dashboard</a></div>
+@if (TempData["AnalyticsNotice"] is string notice) { <p class="notice" role="status">@notice</p> }
+@if (TempData["AnalyticsError"] is string error) { <p class="alert alert-danger" role="alert">@error</p> }
+<form method="get" class="explore-actions"><label for="days">Reporting period (UTC)</label><select id="days" name="days">@foreach (var days in new[] {7,30,90}) { <option value="@days" selected="@(ViewBag.Days == days)">Last @days days</option> }</select><button class="primary-button" type="submit">Update period</button></form>
+<div class="guide-grid">
+<section class="sidebar-panel"><h2>@views.ToString("N0")</h2><p>Public page views · selected period</p></section>
+<section class="sidebar-panel"><h2>@(reports.Count == 0 ? "Not entered" : impressions.ToString("N0"))</h2><p>Ad impressions · entered reports</p></section>
+<section class="sidebar-panel"><h2>@(reports.Count == 0 ? "Not entered" : clicks.ToString("N0"))</h2><p>Ad clicks · entered reports</p></section>
+</div>
+<p class="muted">Traffic counts start when this feature is deployed. Page views count requests, not unique people, and can include repeat visits and bots. Logged-in admin requests are excluded. No visitor identifiers or IP addresses are stored by this counter.</p>
+<p><strong>All-time job detail views:</strong> @ViewBag.JobViews · <strong>All-time application clicks:</strong> @ViewBag.ApplyClicks. Application clicks are separate from ad clicks; these existing counters can include admin visits.</p>
+<section class="explore-panel"><h2>AdSense report figures</h2><p>@reports.Count day(s) entered in this period. Missing reports are not treated as zero. CTR: @(impressions > 0 ? ((double)clicks / impressions).ToString("P2") : "Not available"). Figures are manually entered, not automatically synced or verified by Google.</p><a href="https://www.google.com/adsense/" target="_blank" rel="noopener noreferrer" class="secondary-button">Open Google AdSense reports &nearr;</a>
+<p class="muted">Filter your AdSense report to this website, select a single day, and use UTC reporting to match the traffic dates. Copy Impressions and Clicks. Saving a date replaces its ad figures without changing page views.</p>
+<form method="post" asp-action="SaveReport" class="analytics-form">
+<div><label for="reportDate">Report date (UTC)</label><input id="reportDate" name="Date" type="date" min="2000-01-01" max="@DateTime.UtcNow.ToString("yyyy-MM-dd")" value="@DateTime.UtcNow.AddDays(-1).ToString("yyyy-MM-dd")" required /></div>
+<div><label for="impressions">Ad impressions</label><input id="impressions" name="Impressions" type="number" min="0" max="1000000000" step="1" required /></div>
+<div><label for="clicks">Ad clicks</label><input id="clicks" name="Clicks" type="number" min="0" max="1000000000" step="1" required /></div>
+<button type="submit" class="primary-button">Save report figures</button></form></section>
+<section class="explore-panel"><h2>Daily breakdown</h2><div class="table-responsive"><table class="table"><thead><tr><th>Date (UTC)</th><th>Page views</th><th>Ad impressions</th><th>Ad clicks</th><th>Report updated (UTC)</th></tr></thead><tbody>
+@if (Model.Count == 0) { <tr><td colspan="5">No traffic or ad reports recorded yet.</td></tr> }
+@foreach (var row in Model) { <tr><td>@row.Date.ToString("yyyy-MM-dd")</td><td>@row.PageViews.ToString("N0")</td><td>@(row.AdImpressions?.ToString("N0") ?? "Not entered")</td><td>@(row.AdClicks?.ToString("N0") ?? "Not entered")</td><td>@(row.ReportUpdatedUtc?.ToString("yyyy-MM-dd HH:mm") ?? "—")</td></tr> }
+</tbody></table></div></section>
