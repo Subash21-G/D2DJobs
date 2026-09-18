@@ -117,7 +117,7 @@ public class HomeController : Controller
         if (!string.IsNullOrEmpty(categorySlug)) { var category = JobCategories.Name(categorySlug); if (category == null) return NotFound(); jobs = CategoryJobs(jobs, category); }
         if (batch.HasValue) { if (batch < 1990 || batch > 2100) return BadRequest(); jobs = jobs.Where(j => j.BatchFrom <= batch && j.BatchTo >= batch); }
         var entries = await jobs.OrderByDescending(j => j.PostedDate).ThenByDescending(j => j.Id).Take(30).ToListAsync();
-        var channel = new XElement("channel", new XElement("title", "JobForFresher job alerts"), new XElement("link", Origin), new XElement("description", "Latest active openings. Verify eligibility on the employer's official website."), new XElement("language", "en-IN"));
+        var channel = new XElement("channel", new XElement("title", "D2DJobs job alerts"), new XElement("link", Origin), new XElement("description", "Latest active openings. Verify eligibility on the employer's official website."), new XElement("language", "en-IN"));
         foreach(var job in entries.Where(j => !string.IsNullOrEmpty(j.Slug)))
         {
             var url = Origin + "/job/" + Uri.EscapeDataString(job.Slug!);
@@ -139,7 +139,7 @@ public class HomeController : Controller
         ViewData["Canonical"] = Origin + "/job/" + Uri.EscapeDataString(job.Slug!);
         ViewBag.RelatedJobs = await AvailableJobs().Where(j => j.Category == job.Category && j.Id != job.Id).OrderByDescending(j => j.PostedDate).Take(4).ToListAsync();
         ViewBag.IsSaved = ReadSavedIds().Contains(job.Id);
-        ViewData["Title"] = $"{job.Title} at {job.CompanyName} | JobForFresher";
+        ViewData["Title"] = $"{job.Title} at {job.CompanyName} | D2DJobs";
         ViewData["MetaDescription"] = $"{job.Title} at {job.CompanyName} in {job.Location}. Check eligibility, skills and application details.";
         return View(job);
     }

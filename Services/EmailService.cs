@@ -13,7 +13,7 @@ public class EmailService(IConfiguration configuration) : IEmailService
         if (string.IsNullOrWhiteSpace(host) || string.IsNullOrWhiteSpace(sender) || string.IsNullOrWhiteSpace(password))
             throw new InvalidOperationException("Email delivery is not configured.");
         var email = new MimeMessage();
-        email.From.Add(new MailboxAddress(configuration["EmailSettings:SenderName"] ?? "JobForFresher", sender));
+        email.From.Add(new MailboxAddress(configuration["EmailSettings:SenderName"] ?? "D2DJobs", sender));
         email.To.Add(MailboxAddress.Parse(toEmail)); email.Subject = subject;
         email.Body = new TextPart("html") { Text = message };
         using var smtp = new SmtpClient();

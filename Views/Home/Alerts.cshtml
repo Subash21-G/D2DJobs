@@ -1,5 +1,5 @@
 @model SiteOptions
-@{ ViewData["Title"]="Job alerts | JobForFresher"; }
+@{ ViewData["Title"]="Job alerts | D2DJobs"; }
 <section class="discovery-intro"><div><span class="eyebrow">STAY UP TO DATE</span><h1>New opportunities, in your feed.</h1><p>Subscribe with your preferred RSS reader or join one of our configured channels.</p></div></section>
 <section class="sidebar-panel"><h2>Subscribe to job alerts</h2><p>Add this feed to an RSS reader to receive the latest active job listings. No account or email address is needed.</p><a class="primary-button" asp-route="job-feed">Open the job feed &rarr;</a>
 <form asp-action="Feed" method="get" class="explore-actions"><div><label for="alertCategory">Category</label><select id="alertCategory" name="categorySlug"><option value="">All categories</option>@foreach(var category in JobCategories.All){<option value="@JobCategories.Slug(category)">@category</option>}</select></div><div><label for="alertBatch">Graduation year (optional)</label><input id="alertBatch" name="batch" type="number" min="1990" max="2100" /></div><button class="secondary-button" type="submit">Open filtered feed</button></form>

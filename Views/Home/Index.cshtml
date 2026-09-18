@@ -10,7 +10,7 @@ var popular = ViewBag.PopularJobs as List<Job> ?? new();
 var sections = ViewBag.CategorySections as Dictionary<string, List<Job>> ?? new();
 ViewData["ShowAds"] = Model.Count > 0;
 bool filtered = batch.HasValue || !string.IsNullOrWhiteSpace(category + search + location + experience + qualification);
-ViewData["Title"] = (string.IsNullOrEmpty(category) ? "Latest fresher jobs & off campus drives" : category) + " | JobForFresher";
+ViewData["Title"] = (string.IsNullOrEmpty(category) ? "Latest fresher jobs & off campus drives" : category) + " | D2DJobs";
 }
 <section class="discovery-intro"><div><span class="eyebrow">YOUR NEXT CHAPTER STARTS HERE</span><h1>@if(string.IsNullOrEmpty(category)){<text>Find your first <span>big opportunity.</span></text>}else{<text>@category</text>}</h1><p>Explore fresher jobs, off campus drives and internships. All in one place.</p></div><div class="intro-note"><strong>@ViewBag.TotalJobs</strong><span>active opportunities<br />to explore</span></div></section>
 <form method="get" asp-action="Index" class="search-panel" id="job-filter">
