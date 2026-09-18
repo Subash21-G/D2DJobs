@@ -108,14 +108,6 @@ public class AdminController(ApplicationDbContext db, IWebHostEnvironment enviro
         if (job != null) { db.Jobs.Remove(job); await db.SaveChangesAsync(); DeleteLogo(job.CompanyLogo); }
         return RedirectToAction(nameof(Index));
     }
-    public IActionResult Resumes() => View(Directory.Exists(ResumeFolder) ? Directory.EnumerateFiles(ResumeFolder).Select(Path.GetFileName).Where(n => n != null).Cast<string>().ToList() : new List<string>());
-    public IActionResult DownloadResume(string name)
-    {
-        if (string.IsNullOrWhiteSpace(name) || name != Path.GetFileName(name) || name.Contains('/') || name.Contains('\\')) return BadRequest();
-        var path = Path.Combine(ResumeFolder, name); if (!System.IO.File.Exists(path)) return NotFound();
-        return PhysicalFile(path, "application/octet-stream", name);
-    }
-    private string ResumeFolder => Path.Combine(environment.ContentRootPath, "App_Data", "Resumes");
     private static string Slug(string title) => System.Text.RegularExpressions.Regex.Replace(title.ToLowerInvariant(), "[^a-z0-9]+", "-").Trim('-') + "-" + Guid.NewGuid().ToString("N")[..10];
     private static void CopyFields(Job a, Job b)
     {

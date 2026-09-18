@@ -4,12 +4,12 @@ This section supersedes the historical review below. The original "Next work" li
 
 ## Implemented
 - .NET 10 / EF Core 10, modern admin password hashing, legacy-hash migration, login throttling and account lockout, protected POST logout and password changes.
-- Private resume downloads, graduation-year filters, listing eligibility/source/verification fields, category SEO routes and RSS feeds.
+- Graduation-year filters, listing eligibility/source/verification fields, category SEO routes and RSS feeds.
 - Consolidated category counts, indexes, paginated admin jobs, responsive admin screens and site/ad configuration.
 - Launch readiness dashboard at /Readiness (admin only): HTTPS, domain/channels/ads, pending database migrations, legacy files and active content completeness. Reports manual checks honestly rather than treating configuration as verified production readiness.
 - Needs review filter in the job library for incomplete active listings.
 - IIS App_Data protection and exclusions for test/build/private files.
-- scripts/Move-LegacyResumes.ps1: previewable migration that refuses collisions and links.
+- Legacy applicant-file protection remains documented; there is no applicant resume upload or admin resume-download workflow.
 - scripts/Backup-SiteFiles.ps1: new ZIP archives containing private data, keys and uploads, preserving relative paths and hidden files.
 - scripts/Prepare-Release.ps1: build/publish plus idempotent SQL generation without deploying or applying migrations.
 - Reusable isolated browser and storage regression checks under tests/. See DEPLOYMENT.md for commands and recovery instructions.
@@ -47,7 +47,7 @@ Already present: off-campus, walk-in, IT, government, bank and internship catego
 
 ## Next work, in priority order
 1. Admin authentication: replace unsalted SHA-256 with ASP.NET Core password hashing, migrate existing hashes on successful login, remove the fallback bootstrap password, add login throttling, and use POST with antiforgery for logout. Verify deployment secrets are stored outside checked-in settings.
-2. Resume storage: move private uploads outside wwwroot and only serve through authorized endpoints. This pass blocks the ASP.NET public route but does not modify production hosting configuration.
+2. Applicant resume uploads are outside the current product scope. Existing legacy files, if any, should be handled by the hosting provider separately.
 3. Jobs by graduation batch: add structured eligible years, an EF migration, admin editing, public filters, and filter persistence through sorting/pagination. Freshersvoice already exposes batch browsing.
 4. Job alerts: add configured Telegram/WhatsApp channel links or opt-in email subscriptions with verification/unsubscribe. Sharing a job is already implemented; subscriptions are not. Real channel URLs or delivery configuration are needed.
 5. Listing quality: add official source URL, last-verified timestamp, explicit eligibility, selection process and walk-in date/venue. Preserve these through admin editing and show only supplied details.

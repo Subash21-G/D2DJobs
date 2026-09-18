@@ -23,8 +23,8 @@ response=await context.request.get(base+'/?category=Off%20Campus',{maxRedirects:
 response=await context.request.get(base+'/jobs/feed.xml?categorySlug=off-campus&batch=2026');check(response.status()===200&&(await response.text()).includes('UPGRADE TEST'),'RSS feed');
 response=await context.request.get(base+'/sitemap.xml');check((await response.text()).includes('/jobs/off-campus'),'Category sitemap');
 response=await context.request.get(base+'/jobs/unknown');check(response.status()===404,'Unknown category');
-response=await context.request.get(base+'/uploads/resumes/example.pdf');check(response.status()===404,'Legacy resumes blocked');response=await context.request.get(base+'/App_Data/site-settings.json');check(response.status()===404,'Private settings blocked');
-const anon=await browser.newContext({ignoreHTTPSErrors:true});for(const path of ['/Admin','/Analytics','/Settings','/Readiness','/Admin/Resumes','/Admin/DownloadResume?name=example.pdf']){response=await anon.request.get(base+path,{maxRedirects:0});check(response.status()===302&&response.headers().location.includes('/Admin/Login'),'Protected '+path);}
+response=await context.request.get(base+'/App_Data/site-settings.json');check(response.status()===404,'Private settings blocked');
+const anon=await browser.newContext({ignoreHTTPSErrors:true});for(const path of ['/Admin','/Analytics','/Settings','/Readiness',]){response=await anon.request.get(base+path,{maxRedirects:0});check(response.status()===302&&response.headers().location.includes('/Admin/Login'),'Protected '+path);}
 await visit('/Readiness');check((await page.locator('body').innerText()).includes('All migrations in this application are applied.'),'Readiness migrations');
 check((await page.locator('body').innerText()).includes('24 active listing(s); 24 need publishing details.'),'Readiness content count');
 await visit('/Admin?status=Needs%20review');check(await page.locator('.admin-job-table tbody tr').count()===20,'Needs review pagination');

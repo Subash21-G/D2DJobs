@@ -1,4 +1,4 @@
-﻿
+
 (() => {
     const nav = document.querySelector('.portal-nav');
     const menu = document.querySelector('.menu-toggle');
@@ -35,7 +35,7 @@
     }
     document.querySelector('[data-copy-link]')?.addEventListener('click', async () => {
         const status = document.querySelector('#copy-status');
-        try { await navigator.clipboard.writeText(window.location.href); status.textContent = 'Link copied.'; }
+        try { await navigator.clipboard.writeText(event.currentTarget.dataset.copyText || window.location.href); status.textContent = 'Share text copied.'; }
         catch { status.textContent = 'Copy the URL from your address bar to share this job.'; }
     });
 })();
