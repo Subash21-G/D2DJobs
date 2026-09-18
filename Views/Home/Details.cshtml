@@ -10,8 +10,8 @@ bool saved = ViewBag.IsSaved == true;
 bool canApply = !expired && Uri.TryCreate(Model.ApplyLink, UriKind.Absolute, out var applyUri) && (applyUri.Scheme == "https" || applyUri.Scheme == "http");
 string reportSubject = Uri.EscapeDataString("Report job listing: " + Model.Title);
 string reportBody = Uri.EscapeDataString($"Listing: {Context.Request.Scheme}://{Context.Request.Host}/job/{Model.Slug}\n\nIssue (expired, incorrect details, broken link or other):\n\nDetails:");
-string pageUrl = $"{Context.Request.Scheme}://{Context.Request.Host}/job/{Model.Slug}";
 string siteUrl = Uri.TryCreate(SiteSettings.Value.SiteUrl, UriKind.Absolute, out var configuredSite) ? configuredSite.GetLeftPart(UriPartial.Authority) : $"{Context.Request.Scheme}://{Context.Request.Host}";
+string pageUrl = $"{siteUrl}/job/{Uri.EscapeDataString(Model.Slug ?? string.Empty)}";
 string shareUrl = Uri.EscapeDataString(pageUrl);
 var shareLines = new List<string> { $"{Model.Title} at {Model.CompanyName}", $"Job details: {pageUrl}", $"Apply here: {(canApply ? Model.ApplyLink : "Check the job page for the application link")}", $"Website: {siteUrl}" };
 if (!string.IsNullOrWhiteSpace(SiteSettings.Value.WhatsAppUrl)) shareLines.Add($"WhatsApp group: {SiteSettings.Value.WhatsAppUrl}");
@@ -19,7 +19,7 @@ if (!string.IsNullOrWhiteSpace(SiteSettings.Value.TelegramUrl)) shareLines.Add($
 if (!string.IsNullOrWhiteSpace(SiteSettings.Value.FacebookUrl)) shareLines.Add($"Facebook: {SiteSettings.Value.FacebookUrl}");
 if (!string.IsNullOrWhiteSpace(SiteSettings.Value.InstagramUrl)) shareLines.Add($"Instagram: {SiteSettings.Value.InstagramUrl}");
 if (!string.IsNullOrWhiteSpace(SiteSettings.Value.LinkedInUrl)) shareLines.Add($"LinkedIn: {SiteSettings.Value.LinkedInUrl}");
-string sharePlainText = string.Join("\n", shareLines);
+string sharePlainText = string.Join(Environment.NewLine, shareLines);
 string shareText = Uri.EscapeDataString(sharePlainText);
 var schema = new Dictionary<string, object?> {
     ["@context"] = "https://schema.org", ["@type"] = "JobPosting", ["title"] = Model.Title,

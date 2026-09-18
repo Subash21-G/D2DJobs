@@ -11,13 +11,13 @@ Run `powershell -File scripts/Prepare-Release.ps1` from this repository with the
 5. Review and apply deploy.sql against the intended database through your database administration tool. Do not enable automatic production migrations as a substitute for reviewing the script.
 6. Deploy the publish output without deleting existing App_Data or uploads. Grant the application identity only the required filesystem access. Configure database credentials, admin bootstrap credentials if needed, and email credentials through deployment secrets. Disable bootstrap after initial account creation.
 7. Use HTTPS. If a reverse proxy terminates TLS, configure trusted forwarded headers for that actual hosting topology before testing login. Do not trust arbitrary forwarded headers.
-8. Open Admin > Site setup for your HTTPS domain and real channel URLs. Leave advertising off until actual account approval, slot IDs and the appropriate consent platform are ready.
+8. Set `SiteSettings__SiteUrl=https://d2djobs.in` in the production environment (or save the same URL in Admin > Site setup), then open Admin > Site setup for the real channel URLs. Leave advertising off until actual account approval, slot IDs and the appropriate consent platform are ready.
 
 ## Verify
 - Admin > Launch readiness checks the current database migrations, configuration and incomplete active listings.
-- Admin > Needs review finds active listings missing company, location, qualification, description, application link, official source, eligibility or last verification date. Supply factual values; batch ranges and selection details must come from the employer.
+- Admin > Needs review finds active listings missing title, company, role, location, qualification, skills, description, selection process, application link, official source, eligibility or last verification date. Supply factual values; batch ranges and selection details must come from the employer.
 - Check login/logout, job creation/editing, two populated listing pages, batch/category filters, saved jobs, job detail and application redirects. Use an isolated database for test listings.
-- Check mobile widths 320, 390, 768 and 1440 pixels, RSS, sitemap and canonical URLs.
+- Check mobile widths 320, 390, 768 and 1440 pixels, RSS, sitemap and canonical URLs. Submit `https://d2djobs.in/sitemap.xml` in Google Search Console after the live HTTPS check.
 - Verify /App_Data/site-settings.json returns no file content through the public host/CDN. IIS hidden segments and application middleware block private application data.
 - /health/live is a liveness probe only; use the authenticated readiness page for database and configuration checks.
 - Verify ads on the live domain only after legitimate setup. Readiness reports configuration, not Google approval or successful consent collection.

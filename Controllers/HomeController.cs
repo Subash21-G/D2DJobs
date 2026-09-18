@@ -225,7 +225,7 @@ public class HomeController : Controller
         XNamespace ns = "http://www.sitemaps.org/schemas/sitemap/0.9";
         var origin = Origin;
         var root = new XElement(ns + "urlset");
-        foreach (var path in new[] { "/", "/Home/About", "/Home/Contact", "/Home/PrivacyPolicy", "/Home/Terms", "/Home/Disclaimer", "/Home/Advertise" })
+        foreach (var path in new[] { "/", "/Home/About", "/Home/Contact", "/Home/PrivacyPolicy", "/Home/Terms", "/Home/Disclaimer", "/Home/Advertise", "/job-alerts" })
             root.Add(new XElement(ns + "url", new XElement(ns + "loc", origin + path)));
         foreach (var category in JobCategories.All) root.Add(new XElement(ns + "url", new XElement(ns + "loc", origin + "/jobs/" + JobCategories.Slug(category))));
         foreach (var job in jobs.Where(j => !string.IsNullOrEmpty(j.Slug)))

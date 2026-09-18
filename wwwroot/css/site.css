@@ -255,7 +255,7 @@ body {
 /* ===============================
    CONTENT BOXES
 ================================ */
-.jobforfresher-about,
+.d2djobs-about,
 .job-guidance-section {
     padding: 30px 15px;
 }
@@ -1317,6 +1317,6 @@ body {
         line-height: 1.6;
     }
 
-    .adblock-box .btn {codex
+    .adblock-box .btn {
         margin: 5px;
     }

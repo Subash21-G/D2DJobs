@@ -26,7 +26,7 @@ This section supersedes the historical review below. The original "Next work" li
 ## Remaining external work
 - Deploy to the actual host, apply reviewed migrations and verify hosting/TLS/proxy behavior.
 - Back up and restore the real database and files in an isolated recovery drill; synthetic file restoration is not proof of production recovery.
-- Supply real domain/channel/ad configuration and verified job content. Account approval, consent setup and live ad delivery cannot be inferred from flags.
+- Set the production domain to `https://d2djobs.in`, configure real channel URLs, and publish verified job content. Google Search Console submission, TLS certificate/proxy behavior, AdSense approval, CMP consent collection and live ad delivery remain external checks.
 - Optional future implementations: email subscriptions, automatic channel posting, AdSense API sync, admin recovery and 2FA.
 
 ---
