@@ -73,3 +73,28 @@
 .analytics-form{display:grid;grid-template-columns:repeat(3,minmax(0,1fr)) auto;gap:16px;align-items:end;margin-top:20px}.analytics-form label{display:block}.analytics-form input{width:100%;min-height:44px;padding:8px;border:1px solid var(--line);border-radius:6px;background:var(--surface);color:var(--ink)}@media(max-width:760px){.analytics-form{grid-template-columns:minmax(0,1fr)}}
 .search-panel{grid-template-columns:2fr 1fr 1fr 1fr auto}.explore-actions input,.explore-actions select{min-height:44px;max-width:100%;font:inherit}.explore-actions label{display:block}@media(max-width:1050px){.search-panel{grid-template-columns:repeat(2,minmax(0,1fr))}.search-panel .search-field:first-child,.search-panel .primary-button{grid-column:1/-1}}@media(max-width:360px){.search-panel{grid-template-columns:minmax(0,1fr)}}
 .job-card-channels{display:flex;flex-wrap:wrap;gap:8px;margin:12px 0 4px}.job-card-channels a{display:inline-flex;align-items:center;gap:6px;color:var(--green);font-size:.78rem;font-weight:650;background:var(--mint);border-radius:999px;padding:7px 10px}.job-card-channels a:hover{text-decoration:none;filter:brightness(.97)}
+
+/* Final responsive polish and social-channel motion */
+.opportunity-card{transition:transform .2s ease,box-shadow .2s ease,border-color .2s ease}
+.opportunity-card:hover{transform:translateY(-2px);border-color:#c8d7f2;box-shadow:0 12px 30px #152c4c12}
+.job-card-channels a,.share-links a,.share-links button{position:relative;overflow:hidden;transition:transform .2s ease,box-shadow .2s ease,background-color .2s ease}
+.job-card-channels a:hover,.share-links a:hover,.share-links button:hover{transform:translateY(-2px);box-shadow:0 7px 16px #195cd633;text-decoration:none}
+.job-card-channels a:active,.share-links a:active,.share-links button:active{transform:translateY(0) scale(.97)}
+.job-card-channels a::after,.share-links a::after,.share-links button::after{content:"";position:absolute;inset:0;background:linear-gradient(110deg,transparent 25%,#ffffff66 50%,transparent 75%);transform:translateX(-120%);transition:transform .45s ease}
+.job-card-channels a:hover::after,.share-links a:hover::after,.share-links button:hover::after{transform:translateX(120%)}
+@media(max-width:760px){
+    .discovery-intro{margin-bottom:18px}
+    .section-heading{gap:10px}
+    .opportunity-card{border-radius:14px;padding:18px}
+    .job-card-channels{gap:8px}
+    .job-card-channels a{flex:1 1 145px;justify-content:center;min-height:44px}
+    .job-card-bottom .details-link{width:100%;justify-content:center;padding:10px;border:1px solid var(--line);border-radius:8px;background:var(--soft)}
+    .share-links{gap:8px}
+    .share-links>a,.share-links>button{flex:1 1 calc(50% - 8px);justify-content:center;min-height:44px}
+    .detail-panel h2{margin-top:24px}
+}
+@media(prefers-reduced-motion:reduce){
+    .opportunity-card,.job-card-channels a,.share-links a,.share-links button{transition:none}
+    .opportunity-card:hover,.job-card-channels a:hover,.share-links a:hover,.share-links button:hover{transform:none}
+    .job-card-channels a::after,.share-links a::after,.share-links button::after{display:none}
+}

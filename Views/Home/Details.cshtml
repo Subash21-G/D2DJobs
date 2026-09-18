@@ -32,7 +32,7 @@ if (Model.ExpiryDate.HasValue) schema["validThrough"] = Model.ExpiryDate.Value.T
 <nav class="breadcrumbs" aria-label="Breadcrumb"><a href="/">Home</a><span>/</span><a asp-route="category" asp-route-categorySlug="@JobCategories.Slug(Model.Category)">@Model.Category</a><span>/</span><span>@Model.CompanyName</span></nav>
 @if (TempData["Notice"] is string notice) { <div class="notice" role="status">@notice</div> }
 <div class="jobs-layout"><article class="detail-panel">
-<div class="detail-company"><div class="company-avatar">@if (!string.IsNullOrEmpty(Model.CompanyLogo)) { <img src="~/uploads/logos/@Model.CompanyLogo" alt="@Model.CompanyName logo" /> } else { <span>@(string.IsNullOrWhiteSpace(Model.CompanyName) ? "JF" : Model.CompanyName[..1].ToUpperInvariant())</span> }</div><span>@Model.CompanyName</span>@if (Model.IsFeatured) { <span class="featured-badge">Featured</span> }</div>
+<div class="detail-company"><div class="company-avatar">@if (!string.IsNullOrEmpty(Model.CompanyLogo)) { <img src="~/uploads/logos/@Model.CompanyLogo" alt="@Model.CompanyName logo" /> } else { <span>@(string.IsNullOrWhiteSpace(Model.CompanyName) ? "D2D" : Model.CompanyName[..1].ToUpperInvariant())</span> }</div><span>@Model.CompanyName</span>@if (Model.IsFeatured) { <span class="featured-badge">Featured</span> }</div>
 <h1>@Model.Title</h1><p class="detail-meta">Posted @Model.PostedDate.ToString("dd MMM yyyy") · @Model.Location</p>
 @if (expired) { <div class="application-note"><strong>Applications closed</strong>This opening has expired. Explore related opportunities below.</div> }
 <partial name="_JobDeadline" model="Model" />
