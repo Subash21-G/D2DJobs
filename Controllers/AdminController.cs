@@ -68,6 +68,7 @@ public class AdminController(ApplicationDbContext db, IWebHostEnvironment enviro
         if (!string.IsNullOrEmpty(search)) jobs = jobs.Where(j => j.Title.Contains(search) || j.CompanyName.Contains(search) || j.Location.Contains(search) || j.Skills.Contains(search));
         if (!string.IsNullOrEmpty(category)) jobs = jobs.Where(j => j.Category == category);
         jobs = status switch { "Active" => jobs.Where(j => j.IsActive && (j.ExpiryDate == null || j.ExpiryDate >= today)), "Inactive" => jobs.Where(j => !j.IsActive), "Expired" => jobs.Where(j => j.ExpiryDate < today), _ => jobs };
+        if (status == "Needs review") jobs = jobs.Where(j => j.IsActive && (j.ExpiryDate == null || j.ExpiryDate >= today)).Where(JobQuality.NeedsReview);
         var count = await jobs.CountAsync(); var pages = Math.Max(1, (int)Math.Ceiling(count / 20d)); page = Math.Clamp(page, 1, pages);
         ViewBag.Search = search; ViewBag.Category = category; ViewBag.Status = status; ViewBag.ResultCount = count; ViewBag.Page = page; ViewBag.Pages = pages;
         ViewBag.TopViewedJobs = await db.Jobs.AsNoTracking().OrderByDescending(j => j.ViewsCount).ThenByDescending(j => j.Id).Take(5).ToListAsync();

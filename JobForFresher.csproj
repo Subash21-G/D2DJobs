@@ -4,7 +4,7 @@
     <TargetFramework>net10.0</TargetFramework>
     <Nullable>enable</Nullable>
     <ImplicitUsings>enable</ImplicitUsings>
-    <DefaultItemExcludes>$(DefaultItemExcludes);.mobile-check/**;.upgrade-backup/**;App_Data/**;tests/**;artifacts/**</DefaultItemExcludes>
+    <DefaultItemExcludes>$(DefaultItemExcludes);.mobile-check/**;.upgrade-backup/**;.review-build/**;.review-artifacts/**;App_Data/**;tests/**;artifacts/**;scripts/**</DefaultItemExcludes>
   </PropertyGroup>
 
   <ItemGroup>

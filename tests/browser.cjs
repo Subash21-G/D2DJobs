@@ -1,0 +1,41 @@
+const {chromium}=require('playwright');const fs=require('fs');
+const read=p=>JSON.parse(fs.readFileSync(p,'utf8').replace(/^\uFEFF/,''));
+(async()=>{const browser=await chromium.launch({channel:'msedge',headless:true});const failures=[];let passed=0;try{
+const context=await browser.newContext({ignoreHTTPSErrors:true});const page=await context.newPage();const base=process.env.TEST_BASE_URL;if(!base||!process.env.TEST_ISOLATED_DATABASE||!process.env.TEST_ADMIN_USER||!process.env.TEST_ADMIN_PASSWORD)throw Error('An isolated test environment is required');
+const check=(condition,label)=>{if(!condition)throw Error(label);passed++;};
+const visit=async path=>{const r=await page.goto(base+path);check(r.status()<400,'Page failed '+path+' '+r.status());return r;};
+await visit('/Admin/Login');await page.locator('[name="userName"]').fill(process.env.TEST_ADMIN_USER);await page.locator('[name="password"]').fill(process.env.TEST_ADMIN_PASSWORD);await page.locator('button[type="submit"]').click();await page.waitForURL('**/Admin');
+check((await context.cookies()).some(c=>c.name==='JobForFresher.Admin'&&c.secure&&c.httpOnly),'Secure admin cookie');
+await page.goto(base+'/Admin?search=UPGRADE%20TEST');
+const token=async path=>{await visit(path);return page.locator('[name="__RequestVerificationToken"]').first().inputValue();};
+let csrf=await token('/Admin/Create');
+const form={__RequestVerificationToken:csrf,Title:'UPGRADE TEST Role',CompanyName:'Test Company',Category:'Off Campus',SubCategory:'Off Campus Drive',Role:'Graduate Engineer',Location:'Chennai',Experience:'Fresher',Salary:'Not disclosed',JobType:'Full time',Qualification:'B.Tech',Skills:'C#',Description:'Test listing for upgrade validation only.',ApplyLink:'https://example.com/apply',IsActive:'true',IsFeatured:'false',BatchFrom:'2025',BatchTo:'2027',Eligibility:'Degree in engineering',SelectionProcess:'Assessment and interview',WalkInDate:'2026-10-01T10:00',WalkInVenue:'Test office',OfficialSourceUrl:'https://example.com/careers'};
+let response=await context.request.post(base+'/Admin/Create',{form:{...form,BatchTo:'2024'},maxRedirects:0});check(response.status()===200&&(await response.text()).includes('Enter both batch years'),'Invalid batch rejected');
+response=await context.request.post(base+'/Admin/Create',{form:{...form,ApplyLink:'javascript:alert(1)'},maxRedirects:0});check(response.status()===200&&(await response.text()).includes('HTTP or HTTPS'),'Unsafe link rejected');
+for(let i=0;i<24;i++){response=await context.request.post(base+'/Admin/Create',{form:{...form,Title:'UPGRADE TEST Role '+i},maxRedirects:0});check(response.status()===302,'Create '+i);}
+await visit('/Admin?search=UPGRADE%20TEST');check(await page.locator('.admin-job-table tbody tr').count()===20,'Admin page size');check(await page.getByRole('link',{name:'Next',exact:true}).count()===1,'Admin next link');
+const edit=await page.locator('a[href^="/Admin/Edit/"]').first().getAttribute('href');await visit(edit);const id=await page.locator('[name="Id"]').inputValue();csrf=await page.locator('[name="__RequestVerificationToken"]').first().inputValue();
+response=await context.request.post(base+'/Admin/Edit',{form:{...form,__RequestVerificationToken:csrf,Id:id,Title:'UPGRADE TEST Updated',Eligibility:'Updated eligibility'},maxRedirects:0});check(response.status()===302,'Edit saves');await visit(edit);check(await page.locator('[name="Eligibility"]').inputValue()==='Updated eligibility','Edit fields persist');
+await visit('/jobs/off-campus?batch=2026');check(await page.locator('.job-list>.opportunity-card').count()===12,'Public page size and batch');const next=await page.getByRole('link',{name:'Next page',exact:true}).getAttribute('href');check(next.includes('batch=2026'),'Pagination preserves batch');await visit(next);check(await page.locator('.job-list>.opportunity-card').count()===12,'Public second page');
+await visit('/jobs/off-campus');check((await page.locator('link[rel="canonical"]').getAttribute('href')).endsWith('/jobs/off-campus'),'Category canonical');check((await page.locator('meta[name="robots"]').getAttribute('content'))==='index, follow','Category indexable');
+const details=await page.locator('.details-link').first().getAttribute('href');await visit(details);check((await page.locator('body').innerText()).includes('Eligible graduation batches'),'Batch details rendered');check(await page.getByRole('heading',{name:'Walk-in details'}).count()===1,'Walk-in details');
+response=await context.request.get(base+'/?category=Off%20Campus',{maxRedirects:0});check(response.status()===301&&response.headers().location.includes('/jobs/off-campus'),'Legacy category redirect');
+response=await context.request.get(base+'/jobs/feed.xml?categorySlug=off-campus&batch=2026');check(response.status()===200&&(await response.text()).includes('UPGRADE TEST'),'RSS feed');
+response=await context.request.get(base+'/sitemap.xml');check((await response.text()).includes('/jobs/off-campus'),'Category sitemap');
+response=await context.request.get(base+'/jobs/unknown');check(response.status()===404,'Unknown category');
+response=await context.request.get(base+'/uploads/resumes/example.pdf');check(response.status()===404,'Legacy resumes blocked');response=await context.request.get(base+'/App_Data/site-settings.json');check(response.status()===404,'Private settings blocked');
+const anon=await browser.newContext({ignoreHTTPSErrors:true});for(const path of ['/Admin','/Analytics','/Settings','/Readiness','/Admin/Resumes','/Admin/DownloadResume?name=example.pdf']){response=await anon.request.get(base+path,{maxRedirects:0});check(response.status()===302&&response.headers().location.includes('/Admin/Login'),'Protected '+path);}
+await visit('/Readiness');check((await page.locator('body').innerText()).includes('All migrations in this application are applied.'),'Readiness migrations');
+check((await page.locator('body').innerText()).includes('24 active listing(s); 24 need publishing details.'),'Readiness content count');
+await visit('/Admin?status=Needs%20review');check(await page.locator('.admin-job-table tbody tr').count()===20,'Needs review pagination');
+const publicPage=await anon.newPage();await publicPage.goto(base+details);
+await publicPage.locator('form[action*="SaveJob"] button').click();
+await publicPage.goto(base+'/Home/SavedJobs');check((await publicPage.locator('body').innerText()).includes('UPGRADE TEST'),'Saved job persists');
+response=await anon.request.get(base+'/Home/ApplyClick?id='+id,{maxRedirects:0});check(response.status()===302&&response.headers().location==='https://example.com/apply','Application redirect');
+response=await context.request.get(base+'/Admin/Logout',{maxRedirects:0});check(response.status()===405,'GET logout rejected');response=await context.request.post(base+'/Admin/Logout',{maxRedirects:0});check(response.status()===400,'Logout antiforgery');
+csrf=await token('/Settings');response=await context.request.post(base+'/Settings',{form:{__RequestVerificationToken:csrf,'Site.SiteUrl':'https://example.com',AdsEnabled:'true'},maxRedirects:0});check(response.status()===200&&(await response.text()).includes('To enable ads'),'Invalid ad activation blocked');
+const widths=[320,390,768,1440];for(const width of widths){await page.setViewportSize({width,height:900});for(const path of ['/Admin','/Admin/Create',edit,'/Analytics','/Admin/Security','/Settings','/Readiness','/jobs/off-campus?batch=2026','/job-alerts',details]){await visit(path);check(!await page.evaluate(()=>document.documentElement.scrollWidth>innerWidth),'Overflow '+path+' '+width);}}
+await page.setViewportSize({width:390,height:844});await visit('/jobs/off-campus?batch=2026');await page.screenshot({path:'artifacts/regression-mobile.png',fullPage:true});
+csrf=await token('/Admin');response=await context.request.post(base+'/Admin/Logout',{form:{__RequestVerificationToken:csrf},maxRedirects:0});check(response.status()===302,'POST logout succeeds');response=await context.request.get(base+'/Admin',{maxRedirects:0});check(response.status()===302,'Cookie cleared on logout');
+console.log(JSON.stringify({result:'PASS',assertions:passed,createdJobs:24,note:'All writes were confined to the isolated test database. No ad settings enabled.'}));
+}finally{await browser.close();}})().catch(e=>{console.error(e.message);process.exitCode=1});

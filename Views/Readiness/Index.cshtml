@@ -1,0 +1,10 @@
+@model ReadinessReport
+@{ ViewData["Title"] = "Launch readiness"; }
+<div class="admin-heading"><div><h1>Launch readiness</h1><p class="muted">Current configuration and content checks. Manual checks require verification on your live website.</p></div><a class="primary-button" asp-controller="Settings" asp-action="Index">Site setup</a></div>
+<div class="admin-bottom-grid">
+@foreach (var check in Model.Checks)
+{
+    <section class="admin-panel"><h2>@check.Name</h2><p><strong>@check.Status</strong></p><p>@check.Detail</p></section>
+}
+</div>
+<p class="mt-4"><a asp-controller="Admin" asp-action="Index" asp-route-status="Needs review">Review incomplete active listings</a></p>

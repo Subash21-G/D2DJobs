@@ -1,3 +1,38 @@
+# Current status - 18 September 2026
+
+This section supersedes the historical review below. The original "Next work" list is no longer the current backlog.
+
+## Implemented
+- .NET 10 / EF Core 10, modern admin password hashing, legacy-hash migration, login throttling and account lockout, protected POST logout and password changes.
+- Private resume downloads, graduation-year filters, listing eligibility/source/verification fields, category SEO routes and RSS feeds.
+- Consolidated category counts, indexes, paginated admin jobs, responsive admin screens and site/ad configuration.
+- Launch readiness dashboard at /Readiness (admin only): HTTPS, domain/channels/ads, pending database migrations, legacy files and active content completeness. Reports manual checks honestly rather than treating configuration as verified production readiness.
+- Needs review filter in the job library for incomplete active listings.
+- IIS App_Data protection and exclusions for test/build/private files.
+- scripts/Move-LegacyResumes.ps1: previewable migration that refuses collisions and links.
+- scripts/Backup-SiteFiles.ps1: new ZIP archives containing private data, keys and uploads, preserving relative paths and hidden files.
+- scripts/Prepare-Release.ps1: build/publish plus idempotent SQL generation without deploying or applying migrations.
+- Reusable isolated browser and storage regression checks under tests/. See DEPLOYMENT.md for commands and recovery instructions.
+
+## Verified this pass
+- Debug and Release project builds: zero warnings and errors.
+- Release publish completed; private App_Data and local settings excluded.
+- Idempotent deployment SQL generated at artifacts/deploy.sql; not applied to production.
+- 154 browser assertions passed using 24 synthetic jobs in a fresh LocalDB database. Includes CRUD, input validation, populated pagination, category/batch browsing, feeds, sitemap, anonymous access protection, logout antiforgery, readiness counts, content review, saved jobs, application redirects and responsive widths 320/390/768/1440.
+- Storage checks passed for preview, migration, repeated runs, collision rejection, archive contents, extraction/content restoration, backup overwrite rejection and public-destination rejection.
+- Local legacy resume folder contained zero files. No real resumes were moved.
+- Temporary browser server stopped; isolated test database and artifacts retained for inspection.
+
+## Remaining external work
+- Deploy to the actual host, apply reviewed migrations and verify hosting/TLS/proxy behavior.
+- Back up and restore the real database and files in an isolated recovery drill; synthetic file restoration is not proof of production recovery.
+- Supply real domain/channel/ad configuration and verified job content. Account approval, consent setup and live ad delivery cannot be inferred from flags.
+- Optional future implementations: email subscriptions, automatic channel posting, AdSense API sync, admin recovery and 2FA.
+
+---
+
+# Historical review (superseded where noted above)
+
 # Focused review — 17 September 2026
 
 Reference: https://www.freshersvoice.com/
