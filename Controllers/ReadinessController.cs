@@ -37,6 +37,7 @@ try
         }
         report.Checks.Add(new("Backup and recovery", "Manual verification", "Back up the database, App_Data (including Keys), uploaded logos and deployment secrets. Restore to an isolated environment and verify sign-in and private application data."));
         report.Checks.Add(new("Public hosting", "Manual verification", "Verify HTTPS, private file blocking, populated mobile pages, feeds and application links on the deployed domain."));
+        report.Checks.Add(new("Search Console / sitemap submission", "Recommended", "Submit the production sitemap URL in Google Search Console after the live HTTPS check and confirm that the sitemap can be fetched."));
         return View(report);
     }
 }
