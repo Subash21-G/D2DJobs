@@ -15,6 +15,7 @@ builder.Services.AddControllersWithViews(options => options.SuppressImplicitRequ
 builder.Services.Configure<AdvertisingOptions>(builder.Configuration.GetSection("Advertising"));
 builder.Services.Configure<SiteOptions>(builder.Configuration.GetSection("SiteSettings"));
 builder.Services.AddScoped<IEmailService, EmailService>();
+builder.Services.AddScoped<ExcelJobImporter>();
 builder.Services.AddDbContext<ApplicationDbContext>(options => options.UseSqlServer(builder.Configuration.GetConnectionString("DefaultConnection")));
 Directory.CreateDirectory(Path.Combine(builder.Environment.ContentRootPath, "App_Data", "Keys"));
 builder.Services.AddDataProtection().SetApplicationName("JobForFresher").PersistKeysToFileSystem(new DirectoryInfo(Path.Combine(builder.Environment.ContentRootPath, "App_Data", "Keys")));

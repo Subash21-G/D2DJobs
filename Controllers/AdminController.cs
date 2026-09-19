@@ -10,7 +10,7 @@ using Microsoft.AspNetCore.RateLimiting;
 using Microsoft.EntityFrameworkCore;
 namespace JobForFresher.Controllers;
 [Authorize, ResponseCache(NoStore = true, Location = ResponseCacheLocation.None)]
-public class AdminController(ApplicationDbContext db, IWebHostEnvironment environment) : Controller
+public class AdminController(ApplicationDbContext db, IWebHostEnvironment environment, ExcelJobImporter excelImporter) : Controller
 {
     [AllowAnonymous, HttpGet]
     public IActionResult Login() => User.Identity?.IsAuthenticated == true ? RedirectToAction(nameof(Index)) : View();
@@ -73,6 +73,60 @@ public class AdminController(ApplicationDbContext db, IWebHostEnvironment enviro
         ViewBag.Search = search; ViewBag.Category = category; ViewBag.Status = status; ViewBag.ResultCount = count; ViewBag.Page = page; ViewBag.Pages = pages;
         ViewBag.TopViewedJobs = await db.Jobs.AsNoTracking().OrderByDescending(j => j.ViewsCount).ThenByDescending(j => j.Id).Take(5).ToListAsync();
         return View(await jobs.OrderByDescending(j => j.PostedDate).ThenByDescending(j => j.Id).Skip((page-1)*20).Take(20).ToListAsync());
+    }
+    [HttpGet]
+    public IActionResult Import() => View(new JobImportViewModel());
+
+    [HttpPost, ValidateAntiForgeryToken, RequestSizeLimit(10 * 1024 * 1024)]
+    public async Task<IActionResult> Import(JobImportViewModel input, CancellationToken cancellationToken)
+    {
+        if (input.File == null || input.File.Length == 0)
+        {
+            input.Errors.Add("Choose an .xlsx workbook to upload.");
+            return View(input);
+        }
+        if (!string.Equals(Path.GetExtension(input.File.FileName), ".xlsx", StringComparison.OrdinalIgnoreCase))
+        {
+            input.Errors.Add("Only .xlsx Excel workbooks are supported.");
+            return View(input);
+        }
+        if (input.File.Length > 10 * 1024 * 1024)
+        {
+            input.Errors.Add("The workbook must be 10 MB or smaller.");
+            return View(input);
+        }
+
+        try
+        {
+            await using var stream = input.File.OpenReadStream();
+            var errors = input.Errors;
+            var jobs = excelImporter.Read(stream, errors);
+            if (errors.Count > 0 || jobs.Count == 0)
+            {
+                if (jobs.Count == 0 && errors.Count == 0) errors.Add("The workbook did not contain any data rows.");
+                return View(input);
+            }
+
+            foreach (var job in jobs)
+            {
+                job.Slug = Slug(job.Title);
+                job.PostedDate = DateTime.Now;
+            }
+            await db.Jobs.AddRangeAsync(jobs, cancellationToken);
+            await db.SaveChangesAsync(cancellationToken);
+            TempData["Notice"] = $"{jobs.Count} job(s) imported successfully.";
+            return RedirectToAction(nameof(Index));
+        }
+        catch (InvalidDataException)
+        {
+            input.Errors.Add("The file is not a valid .xlsx workbook.");
+            return View(input);
+        }
+        catch (System.Xml.XmlException)
+        {
+            input.Errors.Add("The workbook contains invalid worksheet data.");
+            return View(input);
+        }
     }
     public IActionResult Create() => View(new Job());
     [HttpPost, ValidateAntiForgeryToken, RequestSizeLimit(3 * 1024 * 1024)]

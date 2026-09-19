@@ -1,0 +1,14 @@
+@model JobForFresher.Models.JobImportViewModel
+@{ ViewData["Title"] = "Import jobs"; }
+<div class="admin-heading"><div><span class="eyebrow">BULK IMPORT</span><h1>Import jobs from Excel</h1><p class="muted">Upload an .xlsx workbook and add all valid rows to your job library.</p></div><a class="secondary-button" asp-action="Index">Back to jobs</a></div>
+<section class="admin-panel">
+    <h2>Upload workbook</h2>
+    <p>Use the first worksheet. The first row must contain <strong>Title</strong>. Other supported columns include CompanyName, Category, SubCategory, Role, Location, Experience, Salary, JobType, Qualification, Skills, Description, ApplyLink, IsFeatured, ExpiryDate, IsActive, BatchFrom, BatchTo, Eligibility, SelectionProcess, WalkInDate, WalkInVenue, OfficialSourceUrl and LastVerifiedUtc.</p>
+    <p class="muted">Rows are validated before anything is saved. If a row fails validation, fix the workbook and upload it again.</p>
+    <form method="post" enctype="multipart/form-data">
+        <div asp-validation-summary="All" class="validation-summary" role="alert"></div>
+        <div class="admin-field"><label asp-for="File">Excel workbook (.xlsx)</label><input asp-for="File" type="file" accept=".xlsx,application/vnd.openxmlformats-officedocument.spreadsheetml.sheet" required /></div>
+        @if (Model.Errors.Count > 0) { <div class="validation-summary" role="alert"><ul>@foreach (var error in Model.Errors) { <li>@error</li> }</ul></div> }
+        <button class="primary-button" type="submit">Validate and import jobs</button>
+    </form>
+</section>
