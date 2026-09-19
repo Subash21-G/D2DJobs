@@ -1,4 +1,5 @@
-@inject Microsoft.Extensions.Options.IOptions<JobForFresher.Models.AdvertisingOptions> AdSettings
+@inject Microsoft.Extensions.Options.IOptions<JobForFresher.Models.AdvertisingOptions> AdSettings
+
 @{ var adminPage = ViewContext.RouteData.Values["controller"]?.ToString() is "Admin" or "Analytics"; }
 <!DOCTYPE html>
 <html lang="en">
@@ -9,9 +10,9 @@
 <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.2/css/all.min.css" rel="stylesheet" />
 @if (adminPage) { <link rel="stylesheet" href="~/css/site.css" asp-append-version="true" /> }
 <link rel="stylesheet" href="~/css/portal.css" asp-append-version="true" />
-@if (!adminPage && AdSettings.Value.IsReady && ViewData["ShowAds"] is true)
+@if (!adminPage && !string.IsNullOrWhiteSpace(AdSettings.Value.PublisherId))
 {
-<script async src="https://pagead2.googlesyndication.com/pagead/js/adsbygoogle.js?client=@AdSettings.Value.PublisherId" crossorigin="anonymous"></script>
+    <script async src="https://pagead2.googlesyndication.com/pagead/js/adsbygoogle.js?client=@AdSettings.Value.PublisherId" crossorigin="anonymous"></script>
 }
 </head>
 <body class="@(adminPage ? "admin-page" : "public-page")">
@@ -42,5 +43,7 @@
 <script src="~/js/portal.js" asp-append-version="true"></script>
 @await RenderSectionAsync("Scripts", required: false)
 </body></html>
-
-
+
+
+
+
