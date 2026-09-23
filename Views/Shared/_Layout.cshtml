@@ -16,6 +16,10 @@
 <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.2/css/all.min.css" rel="stylesheet" />
 @if (adminPage) { <link rel="stylesheet" href="~/css/site.css" asp-append-version="true" /> }
 <link rel="stylesheet" href="~/css/portal.css" asp-append-version="true" />
+@if (!adminPage && !HostEnvironment.IsDevelopment())
+{
+    <link rel="stylesheet" href="~/css/adblock-notice.css" asp-append-version="true" />
+}
 @if (!adminPage && !string.IsNullOrWhiteSpace(AdSettings.Value.PublisherId))
 {
     <script async src="https://pagead2.googlesyndication.com/pagead/js/adsbygoogle.js?client=@AdSettings.Value.PublisherId" crossorigin="anonymous"></script>
@@ -48,6 +52,18 @@
 @if (adminPage) { <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.8/dist/chart.umd.min.js"></script> }
 <script src="~/js/portal.js" asp-append-version="true"></script>
 @await RenderSectionAsync("Scripts", required: false)
+@if (!adminPage && !HostEnvironment.IsDevelopment())
+{
+    <dialog id="d2djobs-support-notice" class="d2djobs-support-notice" role="dialog" aria-modal="true" aria-labelledby="d2djobs-support-title" aria-describedby="d2djobs-support-message">
+        <h2 id="d2djobs-support-title">Ad blocker detected</h2>
+        <p id="d2djobs-support-message">Ads help us keep D2DJobs free for job seekers. Please disable your ad blocker for d2djobs.in and refresh the page.</p>
+        <div class="d2djobs-support-actions">
+            <button type="button" data-support-refresh>I've disabled it - Refresh</button>
+            <button type="button" data-support-dismiss autofocus>Continue for now</button>
+        </div>
+    </dialog>
+    <script src="~/js/adblock-detection.js" asp-append-version="true" defer></script>
+}
 </body></html>
 
 
