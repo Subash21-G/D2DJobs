@@ -130,13 +130,28 @@ public class HomeController : Controller
         Response.StatusCode = StatusCodes.Status404NotFound;
         return View("NotFound");
     }
+    [HttpGet("/job/resolve", Name = "resolve-job")]
+    public async Task<IActionResult> ResolveJob(string? company, string? title)
+    {
+        if (string.IsNullOrWhiteSpace(company) || string.IsNullOrWhiteSpace(title) || company.Length > 500 || title.Length > 500)
+            return MissingJob();
+        company = company.Trim(); title = title.Trim();
+        var matches = await _context.Jobs.AsNoTracking()
+            .Where(j => j.IsActive && j.CompanyName == company && j.Title == title && j.Slug != null && j.Slug != "")
+            .Select(j => j.Slug).Take(2).ToListAsync();
+        // Never choose an unrelated or ambiguous listing across databases.
+        return matches.Count == 1
+            ? RedirectToRoute("job-details", new { slug = matches[0] })
+            : MissingJob();
+    }
+
     public async Task<IActionResult> Details(string slug)
     {
         var job = await _context.Jobs.AsNoTracking().FirstOrDefaultAsync(j => j.Slug == slug && j.IsActive);
         if (job == null) return MissingJob();
         await _context.Jobs.Where(j => j.Id == job.Id).ExecuteUpdateAsync(set => set.SetProperty(j => j.ViewsCount, j => j.ViewsCount + 1));
         job.ViewsCount++;
-        ViewData["Canonical"] = Origin + "/job/" + Uri.EscapeDataString(job.Slug!);
+        ViewData["Canonical"] = Url.RouteUrl("job-details", new { slug = job.Slug }, "https", "d2djobs.in");
         ViewBag.RelatedJobs = await AvailableJobs().Where(j => j.Category == job.Category && j.Id != job.Id).OrderByDescending(j => j.PostedDate).Take(4).ToListAsync();
         ViewBag.IsSaved = ReadSavedIds().Contains(job.Id);
         ViewData["Title"] = $"{job.Title} at {job.CompanyName} | D2DJobs";

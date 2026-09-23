@@ -33,7 +33,7 @@
         box.addEventListener('keydown', event => { if (event.key === 'Escape') { close(); input.focus(); } });
         document.addEventListener('click', event => { if (!event.target.closest('.autocomplete-field')) { sequence++; clearTimeout(timer); request?.abort(); close(); } });
     }
-    document.querySelector('[data-copy-link]')?.addEventListener('click', async () => {
+    document.querySelector('[data-copy-link]')?.addEventListener('click', async (event) => {
         const status = document.querySelector('#copy-status');
         try { await navigator.clipboard.writeText(event.currentTarget.dataset.copyText || window.location.href); status.textContent = 'Share text copied.'; }
         catch { status.textContent = 'Copy the URL from your address bar to share this job.'; }

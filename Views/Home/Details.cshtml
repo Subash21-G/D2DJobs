@@ -10,15 +10,27 @@ bool saved = ViewBag.IsSaved == true;
 bool canApply = !expired && Uri.TryCreate(Model.ApplyLink, UriKind.Absolute, out var applyUri) && (applyUri.Scheme == "https" || applyUri.Scheme == "http");
 string reportSubject = Uri.EscapeDataString("Report job listing: " + Model.Title);
 string reportBody = Uri.EscapeDataString($"Listing: {Context.Request.Scheme}://{Context.Request.Host}/job/{Model.Slug}\n\nIssue (expired, incorrect details, broken link or other):\n\nDetails:");
-string siteUrl = Uri.TryCreate(SiteSettings.Value.SiteUrl, UriKind.Absolute, out var configuredSite) ? configuredSite.GetLeftPart(UriPartial.Authority) : $"{Context.Request.Scheme}://{Context.Request.Host}";
-string pageUrl = $"{siteUrl}/job/{Uri.EscapeDataString(Model.Slug ?? string.Empty)}";
+// Resolve the listing on the public site instead of copying a database-specific slug.
+string pageUrl = Url.RouteUrl("resolve-job", new { company = Model.CompanyName, title = Model.Title }, "https", "d2djobs.in")!;
 string shareUrl = Uri.EscapeDataString(pageUrl);
-var shareLines = new List<string> { $"{Model.Title} at {Model.CompanyName}", $"Job details: {pageUrl}", $"Apply here: {(canApply ? Model.ApplyLink : "Check the job page for the application link")}", $"Website: {siteUrl}" };
-if (!string.IsNullOrWhiteSpace(SiteSettings.Value.WhatsAppUrl)) shareLines.Add($"WhatsApp group: {SiteSettings.Value.WhatsAppUrl}");
-if (!string.IsNullOrWhiteSpace(SiteSettings.Value.TelegramUrl)) shareLines.Add($"Telegram channel: {SiteSettings.Value.TelegramUrl}");
-if (!string.IsNullOrWhiteSpace(SiteSettings.Value.FacebookUrl)) shareLines.Add($"Facebook: {SiteSettings.Value.FacebookUrl}");
-if (!string.IsNullOrWhiteSpace(SiteSettings.Value.InstagramUrl)) shareLines.Add($"Instagram: {SiteSettings.Value.InstagramUrl}");
-if (!string.IsNullOrWhiteSpace(SiteSettings.Value.LinkedInUrl)) shareLines.Add($"LinkedIn: {SiteSettings.Value.LinkedInUrl}");
+var shareLines = new List<string> { $"🚀 {Model.Title}", "" };
+foreach (var (label, value) in new[] {
+    ("🏢 Company", Model.CompanyName),
+    ("💼 Role", Model.Role),
+    ("🎓 Eligibility", Model.Qualification),
+    ("👨‍💻 Experience", Model.Experience),
+    ("💰 Salary", Model.Salary),
+    ("📍 Location", Model.Location)
+})
+{
+    if (!string.IsNullOrWhiteSpace(value)) shareLines.Add($"{label}: {value.Trim()}");
+}
+if (Model.WalkInDate.HasValue) shareLines.Add($"📅 Walk-in: {Model.WalkInDate.Value.ToString("dd MMMM yyyy", System.Globalization.CultureInfo.InvariantCulture)}");
+if (Model.ExpiryDate.HasValue) shareLines.Add($"📅 Apply by: {Model.ExpiryDate.Value.ToString("dd MMMM yyyy", System.Globalization.CultureInfo.InvariantCulture)}");
+shareLines.Add("");
+shareLines.Add($"🔗 Apply here: {pageUrl}");
+shareLines.Add("");
+shareLines.Add("📢 Share with someone looking for a job!");
 string sharePlainText = string.Join(Environment.NewLine, shareLines);
 string shareText = Uri.EscapeDataString(sharePlainText);
 var schema = new Dictionary<string, object?> {
@@ -31,34 +43,57 @@ if (Model.ExpiryDate.HasValue) schema["validThrough"] = Model.ExpiryDate.Value.T
 }
 <nav class="breadcrumbs" aria-label="Breadcrumb"><a href="/">Home</a><span>/</span><a asp-route="category" asp-route-categorySlug="@JobCategories.Slug(Model.Category)">@Model.Category</a><span>/</span><span>@Model.CompanyName</span></nav>
 @if (TempData["Notice"] is string notice) { <div class="notice" role="status">@notice</div> }
-<div class="jobs-layout"><article class="detail-panel">
+<div class="jobs-layout job-details-layout"><article class="detail-panel">
 <div class="detail-company"><div class="company-avatar">@if (!string.IsNullOrEmpty(Model.CompanyLogo)) { <img src="~/uploads/logos/@Model.CompanyLogo" alt="@Model.CompanyName logo" /> } else { <span>@(string.IsNullOrWhiteSpace(Model.CompanyName) ? "D2D" : Model.CompanyName[..1].ToUpperInvariant())</span> }</div><span>@Model.CompanyName</span>@if (Model.IsFeatured) { <span class="featured-badge">Featured</span> }</div>
-<h1>@Model.Title</h1><p class="detail-meta">Posted @Model.PostedDate.ToString("dd MMM yyyy") · @Model.Location</p>
+<h1><span aria-hidden="true">&#x1F680;</span> @Model.Title</h1><p class="detail-meta">Posted @Model.PostedDate.ToString("dd MMM yyyy") · @Model.Location</p>
 @if (expired) { <div class="application-note"><strong>Applications closed</strong>This opening has expired. Explore related opportunities below.</div> }
 <partial name="_JobDeadline" model="Model" />
 <div class="apply-actions">
 @if (!expired && !saved) { <form method="post" asp-action="SaveJob" asp-route-id="@Model.Id"><button class="secondary-button" type="submit"><i class="fa-regular fa-bookmark" aria-hidden="true"></i> Save job</button></form> }
 @if (saved) { <a class="secondary-button" asp-action="SavedJobs">Saved to this browser</a> }
 </div>
-<h2>Job overview</h2>
-<dl class="job-overview">
-@foreach (var fact in new[] { ("Company", Model.CompanyName), ("Role", Model.Role), ("Category", Model.Category), ("Location", Model.Location), ("Experience", Model.Experience), ("Qualification", Model.Qualification), ("Salary", Model.Salary), ("Job type", Model.JobType), ("Closing date", Model.ExpiryDate?.ToString("dd MMM yyyy") ?? "Not specified") }) { <div><dt>@fact.Item1</dt><dd>@(string.IsNullOrWhiteSpace(fact.Item2) ? "Not specified" : fact.Item2)</dd></div> }
+<h2 class="summary-heading">At a glance</h2>
+<dl class="job-summary">
+@foreach (var (icon, label, value) in new[] {
+    ("\U0001F3E2", "Company", Model.CompanyName),
+    ("\U0001F4BC", "Job Role", Model.Role),
+    ("\U0001F393", "Qualification", Model.Qualification),
+    ("\U0001F468\u200D\U0001F4BB", "Experience", Model.Experience),
+    ("\U0001F4B0", "Salary/CTC", Model.Salary),
+    ("\U0001F4CD", "Location", Model.Location),
+    ("\U0001F4C2", "Category", Model.Category),
+    ("\U0001F552", "Job Type", Model.JobType),
+    ("\U0001F4C5", "Walk-in Date", Model.WalkInDate?.ToString("dd MMMM yyyy")),
+    ("\U0001F4C5", "Apply by", Model.ExpiryDate?.ToString("dd MMMM yyyy"))
+})
+{
+    if (!string.IsNullOrWhiteSpace(value))
+    {
+        <div class="job-summary-row"><dt><span aria-hidden="true">@icon</span> @label:</dt><dd>@value</dd></div>
+    }
+}
 </dl>
-<h2>About this opportunity</h2><div class="description-text">@Model.Description</div>
+@if (canApply)
+{
+    <p class="job-summary-apply"><a class="primary-button" href="#how-to-apply">View application details <span aria-hidden="true">&darr;</span></a></p>
+}
+@if (!string.IsNullOrWhiteSpace(Model.Description)) { <h2>About this opportunity</h2><div class="description-text">@Model.Description</div> }
 @if (!string.IsNullOrWhiteSpace(Model.Skills)) { <h2>Skills & requirements</h2><div class="description-text">@Model.Skills</div> }
 @if(Model.BatchFrom.HasValue && Model.BatchTo.HasValue){<h2>Eligible graduation batches</h2><p>@Model.BatchFrom – @Model.BatchTo</p>}
 @if(!string.IsNullOrWhiteSpace(Model.Eligibility)){<h2>Eligibility</h2><div class="description-text">@Model.Eligibility</div>}
 @if(!string.IsNullOrWhiteSpace(Model.SelectionProcess)){<h2>Selection process</h2><div class="description-text">@Model.SelectionProcess</div>}
 @if(Model.WalkInDate.HasValue || !string.IsNullOrWhiteSpace(Model.WalkInVenue)){<h2>Walk-in details</h2><p>@Model.WalkInDate?.ToString("dd MMM yyyy, hh:mm tt") @(Model.WalkInDate.HasValue ? "IST" : "")</p><div class="description-text">@Model.WalkInVenue</div>}
 @if(Uri.TryCreate(Model.OfficialSourceUrl,UriKind.Absolute,out var sourceUri) && sourceUri.Scheme is "http" or "https"){<p><a href="@sourceUri.AbsoluteUri" target="_blank" rel="noopener noreferrer">Check the official source &nearr;</a></p>}
-@if(Model.LastVerifiedUtc.HasValue){<p class="muted">Last verified: @Model.LastVerifiedUtc.Value.ToString("dd MMM yyyy HH:mm") UTC</p>}<h2>How to apply</h2><p class="muted">Review the eligibility and role details, prepare your resume, then follow the application link to the company's recruitment page.</p>
+@if(Model.LastVerifiedUtc.HasValue){<p class="muted">Last verified: @Model.LastVerifiedUtc.Value.ToString("dd MMM yyyy HH:mm") UTC</p>}<h2 id="how-to-apply">How to apply</h2>@if (canApply) { <p class="muted">Review the eligibility and prepare your resume, then apply through the company's recruitment page.</p> }
+else if (!expired) { <p class="muted">An application link has not been added for this listing. Check the official source above for recruitment updates.</p> }
+else { <p class="muted">Applications for this listing have closed. Browse similar opportunities for current openings.</p> }
 <div class="apply-actions">
 @if (canApply) { <a class="primary-button" asp-action="ApplyClick" asp-route-id="@Model.Id" target="_blank" rel="noopener noreferrer">Apply on company website &nearr;</a> }
-else if (!expired) { <span class="secondary-button">Application link unavailable</span> }
+else if (!expired) { <span class="application-unavailable">Application link unavailable</span> }
 </div>
 <div class="application-note"><strong>Apply safely</strong>Verify the opening on the employer's official website. Never pay a fee to secure a job.</div>
 <div class="listing-report"><strong>Something incorrect?</strong><p>Let us know about an expired opening, broken application link or misleading details.</p><a href="mailto:contactsupport21@gmail.com?subject=@reportSubject&amp;body=@reportBody">Report this listing by email</a></div>
-<h2>Share this opportunity</h2><p class="muted">Sharing includes the job page, application link, website and your configured social channels.</p><div class="share-links"><a href="https://wa.me/?text=@shareText" target="_blank" rel="noopener noreferrer">WhatsApp</a><a href="https://t.me/share/url?url=@shareUrl&amp;text=@shareText" target="_blank" rel="noopener noreferrer">Telegram</a><a href="https://www.linkedin.com/sharing/share-offsite/?url=@shareUrl" target="_blank" rel="noopener noreferrer">LinkedIn</a>@if (!string.IsNullOrWhiteSpace(SiteSettings.Value.FacebookUrl)) { <a href="@SiteSettings.Value.FacebookUrl" target="_blank" rel="noopener noreferrer">Facebook</a> }@if (!string.IsNullOrWhiteSpace(SiteSettings.Value.InstagramUrl)) { <a href="@SiteSettings.Value.InstagramUrl" target="_blank" rel="noopener noreferrer">Instagram</a> }@if (!string.IsNullOrWhiteSpace(SiteSettings.Value.LinkedInUrl)) { <a href="@SiteSettings.Value.LinkedInUrl" target="_blank" rel="noopener noreferrer">Our LinkedIn</a> }<button class="secondary-button" type="button" data-copy-link data-copy-text="@sharePlainText">Copy share text</button><span id="copy-status" role="status"></span></div>
+<h2>Share this opportunity</h2><p class="muted">Share a job summary with an Apply here link to this job details page.</p><div class="share-links"><a href="https://wa.me/?text=@shareText" target="_blank" rel="noopener noreferrer">WhatsApp</a><a href="https://t.me/share/url?url=@shareUrl&amp;text=@shareText" target="_blank" rel="noopener noreferrer">Telegram</a><a href="https://www.linkedin.com/sharing/share-offsite/?url=@shareUrl" target="_blank" rel="noopener noreferrer">LinkedIn</a>@if (!string.IsNullOrWhiteSpace(SiteSettings.Value.FacebookUrl)) { <a href="@SiteSettings.Value.FacebookUrl" target="_blank" rel="noopener noreferrer">Facebook</a> }@if (!string.IsNullOrWhiteSpace(SiteSettings.Value.InstagramUrl)) { <a href="@SiteSettings.Value.InstagramUrl" target="_blank" rel="noopener noreferrer">Instagram</a> }@if (!string.IsNullOrWhiteSpace(SiteSettings.Value.LinkedInUrl)) { <a href="@SiteSettings.Value.LinkedInUrl" target="_blank" rel="noopener noreferrer">Our LinkedIn</a> }<button class="secondary-button" type="button" data-copy-link data-copy-text="@sharePlainText">Copy share text</button><span id="copy-status" role="status"></span></div>
 </article><aside class="jobs-sidebar"><section class="sidebar-panel"><div class="panel-heading"><h2>Similar opportunities</h2></div>@if (related.Count == 0) { <p class="muted">Explore all current openings to find your next opportunity.</p> }@foreach (var job in related) { <a class="compact-job" asp-action="Details" asp-route-slug="@job.Slug"><strong>@job.Title</strong><small>@job.CompanyName · @job.Location</small></a> }<a class="details-link" asp-route="category" asp-route-categorySlug="@JobCategories.Slug(Model.Category)">Browse @Model.Category &nearr;</a></section><section class="career-note"><span class="eyebrow">BEFORE YOU APPLY</span><h2>Make your application count.</h2><p>Highlight relevant projects, match your skills to the role and keep your contact details up to date.</p><a asp-action="SavedJobs">Your saved opportunities &nearr;</a></section></aside></div>
 @if (!expired) { <script type="application/ld+json">@Html.Raw(JsonSerializer.Serialize(schema))</script> }
 
