@@ -15,7 +15,7 @@
 <section class="sidebar-panel"><h2>@(reports.Count == 0 ? "Not entered" : clicks.ToString("N0"))</h2><p>Ad clicks · entered reports</p></section>
 </div>
 <p class="muted">Traffic counts start when this feature is deployed. Page views count requests, not unique people, and can include repeat visits and bots. Logged-in admin requests are excluded. No visitor identifiers or IP addresses are stored by this counter.</p>
-<p><strong>All-time job detail views:</strong> @ViewBag.JobViews · <strong>All-time application clicks:</strong> @ViewBag.ApplyClicks. Application clicks are separate from ad clicks; these existing counters can include admin visits.</p>
+<p><strong>All-time job detail views:</strong> @ViewBag.JobViews · <strong>All-time application clicks:</strong> @ViewBag.ApplyClicks. Application clicks are separate from ad clicks. Logged-in admin visits are excluded going forward; older totals may include them.</p>
 <section class="explore-panel"><h2>AdSense report figures</h2><p>@reports.Count day(s) entered in this period. Missing reports are not treated as zero. CTR: @(impressions > 0 ? ((double)clicks / impressions).ToString("P2") : "Not available"). Figures are manually entered, not automatically synced or verified by Google.</p><a href="https://www.google.com/adsense/" target="_blank" rel="noopener noreferrer" class="secondary-button">Open Google AdSense reports &nearr;</a>
 <p class="muted">Filter your AdSense report to this website, select a single day, and use UTC reporting to match the traffic dates. Copy Impressions and Clicks. Saving a date replaces its ad figures without changing page views.</p>
 <form method="post" asp-action="SaveReport" class="analytics-form">

@@ -59,7 +59,7 @@ public class AdminController(ApplicationDbContext db, IWebHostEnvironment enviro
         admin.FailedLoginCount = 0; admin.LockoutUntilUtc = null; await db.SaveChangesAsync(); await SignIn(admin);
         TempData["Notice"] = "Password changed. Other signed-in sessions have been revoked."; return RedirectToAction(nameof(Security));
     }
-    public async Task<IActionResult> Index(string? search, string? category, string? status, int page = 1)
+    public async Task<IActionResult> Index(string? search, string? category, string? status, int page = 1, int recentDays = 0, DateTime? addedFrom = null, DateTime? addedTo = null, string dateOrder = "newest")
     {
         var today = DateTime.Today;
         var totals = await db.Jobs.GroupBy(j => 1).Select(g => new { Total = g.Count(), Featured = g.Count(j => j.IsFeatured), Active = g.Count(j => j.IsActive && (j.ExpiryDate == null || j.ExpiryDate >= today)), Expired = g.Count(j => j.ExpiryDate < today) }).FirstOrDefaultAsync();
@@ -69,10 +69,24 @@ public class AdminController(ApplicationDbContext db, IWebHostEnvironment enviro
         if (!string.IsNullOrEmpty(category)) jobs = jobs.Where(j => j.Category == category);
         jobs = status switch { "Active" => jobs.Where(j => j.IsActive && (j.ExpiryDate == null || j.ExpiryDate >= today)), "Inactive" => jobs.Where(j => !j.IsActive), "Expired" => jobs.Where(j => j.ExpiryDate < today), _ => jobs };
         if (status == "Needs review") jobs = jobs.Where(j => j.IsActive && (j.ExpiryDate == null || j.ExpiryDate >= today)).Where(JobQuality.NeedsReview);
+        recentDays = recentDays is 7 or 30 or 90 ? recentDays : 0;
+        dateOrder = dateOrder == "oldest" ? "oldest" : "newest";
+        addedFrom = addedFrom?.Date;
+        addedTo = addedTo?.Date;
+        var invalidDateRange = addedFrom.HasValue && addedTo.HasValue && addedFrom > addedTo;
+        if (recentDays > 0) jobs = jobs.Where(j => j.PostedDate >= today.AddDays(1 - recentDays) && j.PostedDate < today.AddDays(1));
+        if (addedFrom.HasValue) jobs = jobs.Where(j => j.PostedDate >= addedFrom.Value);
+        if (addedTo.HasValue) jobs = jobs.Where(j => j.PostedDate < addedTo.Value.AddDays(1));
+        if (invalidDateRange) jobs = jobs.Where(j => false);
         var count = await jobs.CountAsync(); var pages = Math.Max(1, (int)Math.Ceiling(count / 20d)); page = Math.Clamp(page, 1, pages);
-        ViewBag.Search = search; ViewBag.Category = category; ViewBag.Status = status; ViewBag.ResultCount = count; ViewBag.Page = page; ViewBag.Pages = pages;
+        ViewBag.Search = search; ViewBag.Category = category; ViewBag.Status = status; ViewBag.RecentDays = recentDays;
+        ViewBag.AddedFrom = addedFrom?.ToString("yyyy-MM-dd"); ViewBag.AddedTo = addedTo?.ToString("yyyy-MM-dd");
+        ViewBag.DateOrder = dateOrder; ViewBag.InvalidDateRange = invalidDateRange; ViewBag.ResultCount = count; ViewBag.Page = page; ViewBag.Pages = pages;
         ViewBag.TopViewedJobs = await db.Jobs.AsNoTracking().OrderByDescending(j => j.ViewsCount).ThenByDescending(j => j.Id).Take(5).ToListAsync();
-        return View(await jobs.OrderByDescending(j => j.PostedDate).ThenByDescending(j => j.Id).Skip((page-1)*20).Take(20).ToListAsync());
+        var orderedJobs = dateOrder == "oldest"
+            ? jobs.OrderBy(j => j.PostedDate).ThenBy(j => j.Id)
+            : jobs.OrderByDescending(j => j.PostedDate).ThenByDescending(j => j.Id);
+        return View(await orderedJobs.Skip((page-1)*20).Take(20).ToListAsync());
     }
     [HttpGet]
     public IActionResult Import() => View(new JobImportViewModel());

@@ -14,6 +14,7 @@ public class HomeController : Controller
     private readonly ApplicationDbContext _context;
     private readonly IDataProtector _savedJobsProtector;
     private readonly IConfiguration _configuration;
+    private bool IsAdminSession => User.Identity?.IsAuthenticated == true;
     private string Origin => Uri.TryCreate(_configuration["SiteSettings:SiteUrl"], UriKind.Absolute, out var url) && url.Scheme == "https" ? url.GetLeftPart(UriPartial.Authority) : $"{Request.Scheme}://{Request.Host}{Request.PathBase}";
     private const string SavedCookie = "JobForFresher.SavedJobs";
     public HomeController(ApplicationDbContext context, IDataProtectionProvider protection, IConfiguration configuration)
@@ -149,8 +150,11 @@ public class HomeController : Controller
     {
         var job = await _context.Jobs.AsNoTracking().FirstOrDefaultAsync(j => j.Slug == slug && j.IsActive);
         if (job == null) return MissingJob();
-        await _context.Jobs.Where(j => j.Id == job.Id).ExecuteUpdateAsync(set => set.SetProperty(j => j.ViewsCount, j => j.ViewsCount + 1));
-        job.ViewsCount++;
+        if (!IsAdminSession)
+        {
+            await _context.Jobs.Where(j => j.Id == job.Id).ExecuteUpdateAsync(set => set.SetProperty(j => j.ViewsCount, j => j.ViewsCount + 1));
+            job.ViewsCount++;
+        }
         ViewData["Canonical"] = Url.RouteUrl("job-details", new { slug = job.Slug }, "https", "d2djobs.in");
         ViewBag.RelatedJobs = await AvailableJobs().Where(j => j.Category == job.Category && j.Id != job.Id).OrderByDescending(j => j.PostedDate).Take(4).ToListAsync();
         ViewBag.IsSaved = ReadSavedIds().Contains(job.Id);
@@ -167,7 +171,8 @@ public class HomeController : Controller
             TempData["Notice"] = "The application link is unavailable. Please check back later.";
             return RedirectToAction(nameof(Details), new { slug = job.Slug });
         }
-        await _context.Jobs.Where(j => j.Id == id).ExecuteUpdateAsync(set => set.SetProperty(j => j.ApplyClicks, j => j.ApplyClicks + 1));
+        if (!IsAdminSession)
+            await _context.Jobs.Where(j => j.Id == id).ExecuteUpdateAsync(set => set.SetProperty(j => j.ApplyClicks, j => j.ApplyClicks + 1));
         return Redirect(link.AbsoluteUri);
     }
 
