@@ -1,0 +1,28 @@
+@inject Microsoft.Extensions.Options.IOptions<JobForFresher.Models.SiteOptions> SiteSettings
+@model JobForFresher.Models.Job
+@{
+string pageUrl = Url.RouteUrl("resolve-job", new { company = Model.CompanyName, title = Model.Title }, "https", "d2djobs.in")!;
+var shareLines = new List<string> { $"\U0001F680 {Model.Title}", "" };
+foreach (var (label, value) in new[] {
+    ("\U0001F3E2 Company", Model.CompanyName),
+    ("\U0001F4BC Role", Model.Role),
+    ("\U0001F393 Eligibility", Model.Qualification),
+    ("\U0001F468\u200D\U0001F4BB Experience", Model.Experience),
+    ("\U0001F4B0 Salary", Model.Salary),
+    ("\U0001F4CD Location", Model.Location)
+})
+{
+    if (!string.IsNullOrWhiteSpace(value)) shareLines.Add($"{label}: {value.Trim()}");
+}
+if (Model.WalkInDate.HasValue) shareLines.Add($"\U0001F4C5 Walk-in: {Model.WalkInDate.Value.ToString("dd MMMM yyyy", System.Globalization.CultureInfo.InvariantCulture)}");
+if (Model.ExpiryDate.HasValue) shareLines.Add($"\U0001F4C5 Apply by: {Model.ExpiryDate.Value.ToString("dd MMMM yyyy", System.Globalization.CultureInfo.InvariantCulture)}");
+shareLines.Add("");
+shareLines.Add($"\U0001F517 Apply here: {pageUrl}");
+shareLines.Add("");
+if (!string.IsNullOrWhiteSpace(SiteSettings.Value.WhatsAppUrl)) shareLines.Add($"\U0001F4F2 WhatsApp job group: {SiteSettings.Value.WhatsAppUrl}");
+if (!string.IsNullOrWhiteSpace(SiteSettings.Value.TelegramUrl)) shareLines.Add($"\u2708\uFE0F Telegram job channel: {SiteSettings.Value.TelegramUrl}");
+if (!string.IsNullOrWhiteSpace(SiteSettings.Value.WhatsAppUrl) || !string.IsNullOrWhiteSpace(SiteSettings.Value.TelegramUrl)) shareLines.Add("");
+shareLines.Add("\U0001F4E2 Share with someone looking for a job!");string sharePlainText = string.Join(Environment.NewLine, shareLines);
+}
+<button class="secondary-button" type="button" data-copy-share-text="@sharePlainText" aria-label="Copy share text for @Model.Title">Copy share text</button>
+<span class="visually-hidden" data-copy-status role="status"></span>
