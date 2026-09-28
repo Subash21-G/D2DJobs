@@ -7,6 +7,10 @@
 <html lang="en">
 <head>
 <meta charset="utf-8" /><meta name="viewport" content="width=device-width, initial-scale=1" />
+
+    <!-- Cuelinks Website Verification -->
+    <meta name="cuelinks-verification" content="VERIFY-CL-TAZUOLFO" />
+
 @if (!adminPage && !HostEnvironment.IsDevelopment() && Monetag.Value.IsReady)
 {
     <script src="https://quge5.com/88/tag.min.js" data-zone="284842" async data-cfasync="false"></script>
@@ -34,7 +38,7 @@
 <div class="header-actions"><a class="saved-link" asp-controller="Home" asp-action="SavedJobs"><i class="fa-regular fa-bookmark" aria-hidden="true"></i> Saved jobs</a><button class="theme-toggle" type="button" aria-label="Toggle dark mode" aria-pressed="false"><i class="fa-regular fa-moon" aria-hidden="true"></i></button><button class="menu-toggle" type="button" aria-controls="primary-navigation" aria-expanded="false">Menu <i class="fa-solid fa-bars" aria-hidden="true"></i></button></div>
 </div>
 <nav id="primary-navigation" class="portal-nav" aria-label="Main navigation"><div class="portal-container">
-<a asp-controller="Home" asp-action="Index" asp-route-category="">All jobs</a>
+<a asp-controller="Home" asp-action="Index" asp-route-category="">All jobs</a><a asp-controller="Resume" asp-action="Index">Free resume builder</a><a asp-controller="Employer" asp-action="Index">For employers</a>
 @foreach (var category in new[] { "Off Campus", "Walk-in", "IT Jobs", "Government Jobs", "Bank Jobs", "Internship Programs", "Work From Home Jobs" })
 {
 <a class="@(Context.Request.Query["category"] == category ? "selected" : "")"  asp-route="category" asp-route-categorySlug="@JobCategories.Slug(category)">@(category == "Internship Programs" ? "Internships" : category == "Government Jobs" ? "Govt jobs" : category == "Work From Home Jobs" ? "Remote jobs" : category)</a>
