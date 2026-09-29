@@ -1,0 +1,32 @@
+@{ ViewData["Title"] = "Free resume builder for freshers | D2DJobs"; ViewData["MetaDescription"] = "Build a clean resume for free. Preview your education, experience and projects, then print or save as PDF."; }
+<div class="tools-heading no-print"><div><span class="eyebrow">YOUR NEXT CHAPTER</span><h1>A clear resume.<br />A confident first step.</h1><p>Build, preview, and save a PDF for free. No account needed.</p></div><a class="secondary-button" asp-action="Services">Explore optional resume help →</a></div>
+<noscript><p class="tools-notice">Enable JavaScript to use the live resume editor and save a draft.</p></noscript>
+<div class="resume-workspace">
+<section class="tool-card resume-editor no-print" aria-labelledby="editor-heading"><div class="tools-heading"><h2 id="editor-heading">Your details</h2><span class="tool-badge">100% free</span></div>
+<p class="muted">Your resume is built in this browser. We do not upload its contents. Save a draft only on a device you trust.</p>
+<a href="#resume-preview">Jump to preview ↓</a>
+<form id="resume-form" class="tools-form">
+<label for="resume-name">Full name <span aria-hidden="true">*</span></label><input id="resume-name" name="name" required maxlength="100" autocomplete="name" placeholder="Your full name" />
+<label for="resume-headline">Target role</label><input id="resume-headline" name="headline" maxlength="150" placeholder="Graduate Software Engineer" />
+<div class="form-grid"><div><label for="resume-email">Email</label><input id="resume-email" name="email" type="email" maxlength="150" autocomplete="email" /></div><div><label for="resume-phone">Phone</label><input id="resume-phone" name="phone" type="tel" maxlength="40" autocomplete="tel" /></div></div>
+<label for="resume-location">City, state</label><input id="resume-location" name="location" maxlength="150" autocomplete="address-level2" />
+<label for="resume-links">LinkedIn / portfolio</label><textarea id="resume-links" name="links" rows="2" maxlength="600" placeholder="linkedin.com/in/yourname&#10;github.com/yourname"></textarea>
+<label for="resume-summary">Professional summary</label><textarea id="resume-summary" name="summary" rows="4" maxlength="1800" placeholder="Describe your strengths, relevant projects, and the role you are seeking."></textarea>
+<label for="resume-education">Education</label><textarea id="resume-education" name="education" rows="5" maxlength="4000" placeholder="B.Tech in Computer Science | College name&#10;2022–2026 | CGPA: 8.4/10"></textarea>
+<label for="resume-experience">Experience / internships</label><textarea id="resume-experience" name="experience" rows="5" maxlength="6000" placeholder="Software Intern | Company | May–July 2026&#10;• Built a dashboard used by a team of 10.&#10;• Reduced report preparation time by 30%."></textarea>
+<label for="resume-projects">Projects</label><textarea id="resume-projects" name="projects" rows="5" maxlength="6000" placeholder="Project name | Technologies used&#10;• Explain what you built and the result."></textarea>
+<label for="resume-skills">Skills</label><textarea id="resume-skills" name="skills" rows="3" maxlength="2000" placeholder="C#, SQL, JavaScript, Git, communication"></textarea>
+<label for="resume-certifications">Certifications / achievements</label><textarea id="resume-certifications" name="certifications" rows="4" maxlength="3000" placeholder="Certificate name | Issuer | Year"></textarea>
+<div class="tool-actions"><button class="primary-button" type="submit">Print / save PDF</button><button class="secondary-button" type="button" id="save-resume">Save draft on this device</button><button class="secondary-button" type="button" id="load-resume">Load saved draft</button><button class="secondary-button" type="button" id="clear-resume">Clear resume &amp; saved draft</button></div>
+<p id="resume-status" role="status" aria-live="polite"></p><p class="muted">For a PDF, choose “Save as PDF” in the print dialog. Use A4 paper and turn off browser headers and footers.</p>
+</form></section>
+<section class="resume-preview-wrap" aria-label="Resume preview"><div class="preview-label no-print"><span>LIVE PREVIEW</span><span>Simple, readable layout</span></div>
+<article id="resume-preview" class="resume-paper">
+<header><h1 data-preview="name">Your name</h1><p class="resume-headline" data-preview="headline">Your target role</p><p class="resume-contact" id="preview-contact"></p><p class="preserve-lines" data-preview="links"></p></header>
+@foreach(var item in new[]{("summary", "PROFILE"), ("education", "EDUCATION"), ("experience", "EXPERIENCE"), ("projects", "PROJECTS"), ("skills", "SKILLS"), ("certifications", "CERTIFICATIONS & ACHIEVEMENTS") }){
+<section data-resume-section="@item.Item1" hidden><h2>@item.Item2</h2><p class="preserve-lines" data-preview="@item.Item1"></p></section>
+}
+<p id="resume-empty" class="muted no-print">Add your education, skills, and projects to see your resume take shape.</p>
+</article><div class="tool-actions no-print"><a href="#editor-heading">↑ Back to editor</a><button class="primary-button" type="submit" form="resume-form">Print / save PDF</button></div></section></div>
+<section class="tool-card resume-help no-print"><h2>A little guidance goes a long way.</h2><p>Use specific results, keep dates consistent, and tailor your skills to the opening. Include only experience and achievements you can explain in an interview.</p><div class="tool-actions"><a asp-action="Services">Get optional professional help →</a><a href="/">Find jobs for your new resume →</a></div></section>
+@section Scripts{<script src="~/js/resume-builder.js" asp-append-version="true"></script>}

@@ -22,6 +22,18 @@ Run `powershell -File scripts/Prepare-Release.ps1` from this repository with the
 - /health/live is a liveness probe only; use the authenticated readiness page for database and configuration checks.
 - Verify ads on the live domain only after legitimate setup. Readiness reports configuration, not Google approval or successful consent collection.
 
+## AdSense review gate
+Do not request review until every item below is true on the public domain, not only in a local build.
+
+1. Deploy the current application and database migration together. Confirm `/resume-builder`, `/employer/register`, and `/editorial-policy` return successful pages from the main navigation.
+2. Confirm the old ad-blocker dialog is absent on the home, legal, and job-detail pages.
+3. Confirm `/ads.txt` contains the intended `pub-` account and the home page source contains the matching `google-adsense-account` meta tag. A publisher ID verifies ownership; it does not mean the site is approved.
+4. In Admin > Launch readiness, resolve every active listing under **Needs review**. Manually verify factual accuracy and originality; field-presence checks cannot detect copied or misleading text.
+5. Keep Monetag and AdSense ad placements disabled during review. In AdSense, configure Google's Privacy & messaging CMP or another Google-certified CMP, then test the live consent journey where it is required. Only then confirm the consent setting in this application.
+6. Check the privacy policy, terms, disclaimer, editorial policy, About, Contact, and all primary navigation links on mobile and desktop. Confirm expired jobs and broken application links are removed or corrected.
+7. Add `d2djobs.in` in AdSense, verify ownership, and request review. Do not select **Site approved** or enable ad slots until AdSense reports the site as **Ready**.
+8. After approval, add the issued ten-digit slot IDs, confirm the certified CMP is live, select **Site approved**, and enable ads. Verify advertisements are labelled and remain separated from application controls.
+
 ## Restore drill
 Keep the application stopped. Restore SQL into an isolated database; extract the file archive into an isolated site preserving App_Data and wwwroot/uploads paths. Restore environment configuration from your secret manager, point it at the isolated database, and restrict network access. Start the matching application release; verify login, a saved job and logo rendering. Check public private-file blocking again. Record when and where the drill succeeded. Do not overwrite a running production database during a drill.
 

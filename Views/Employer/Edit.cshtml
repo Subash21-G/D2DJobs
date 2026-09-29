@@ -1,0 +1,20 @@
+@model CampaignInput
+@{ bool editing = ViewBag.CampaignId != null; ViewData["Title"] = (editing ? "Edit job" : "Post a job") + " | D2DJobs"; }
+<a asp-action="Index">← Back to campaigns</a><div class="tools-heading"><div><span class="eyebrow">EMPLOYER WORKSPACE</span><h1>@(editing ? "Update your opening." : "Find your next hire.")</h1><p>All submissions are reviewed before publication. Dates use the site's local calendar.</p></div></div>
+<section class="tool-card"><form method="post" class="tools-form" asp-action="@(editing ? "Edit" : "Create")" asp-route-id="@ViewBag.CampaignId">
+<div asp-validation-summary="All" class="validation-summary"></div><input type="hidden" name="RowVersion" value="@Convert.ToBase64String(Model.RowVersion)" />
+<div class="form-grid">
+<div><label asp-for="Title">Job title</label><input asp-for="Title" required maxlength="200" placeholder="Graduate Software Engineer" /></div>
+<div><label asp-for="Category"></label><select asp-for="Category">@foreach(var category in JobCategories.All){<option>@category</option>}</select></div>
+<div><label asp-for="Location"></label><input asp-for="Location" required maxlength="200" placeholder="Bengaluru / Remote" /></div>
+<div><label asp-for="Qualification"></label><input asp-for="Qualification" required maxlength="200" placeholder="B.E., B.Tech, MCA" /></div>
+<div><label asp-for="Experience"></label><input asp-for="Experience" required maxlength="200" placeholder="0–1 years" /></div>
+<div><label asp-for="Salary">Salary (optional)</label><input asp-for="Salary" maxlength="200" placeholder="₹4–6 LPA" /></div>
+<div><label asp-for="StartDate"></label><input asp-for="StartDate" type="date" required /></div>
+<div><label asp-for="EndDate"></label><input asp-for="EndDate" type="date" required /></div>
+</div>
+<label asp-for="Description">Job description and eligibility</label><textarea asp-for="Description" required minlength="30" maxlength="10000" rows="9"></textarea>
+<label asp-for="ApplyLink"></label><input asp-for="ApplyLink" type="url" required maxlength="1000" placeholder="https://company.com/careers/opening" />
+@if(editing){<p class="tools-notice">Saving changes pauses the public listing until your updated details are approved.</p>}
+<div class="tool-actions"><button class="primary-button" type="submit">Submit for review</button><a class="secondary-button" asp-action="Index">Cancel</a></div>
+</form></section>

@@ -24,7 +24,7 @@ public class HomeController : Controller
         _savedJobsProtector = protection.CreateProtector("JobForFresher.SavedJobs.v1");
     }
     private IQueryable<Job> AvailableJobs() => _context.Jobs.AsNoTracking()
-        .Where(j => j.IsActive && (j.ExpiryDate == null || j.ExpiryDate >= DateTime.Today));
+        .Where(j => j.IsActive && (j.AvailableFrom == null || j.AvailableFrom <= DateTime.Today) && (j.ExpiryDate == null || j.ExpiryDate >= DateTime.Today));
     private static IQueryable<Job> CategoryJobs(IQueryable<Job> query, string category) => category switch
     {
         "Off Campus" => query.Where(j => j.Category == "Off Campus" || j.SubCategory == "Off Campus Drive"),
@@ -68,10 +68,13 @@ public class HomeController : Controller
         };
         var result = await ordered.Skip((page - 1) * pageSize).Take(pageSize).ToListAsync();
         ViewBag.CurrentPage = page; ViewBag.TotalPages = pages; ViewBag.ResultCount = total;
+        var hasPublishingQualityContent = result.Any(job => !JobQuality.RequiresReview(job));
+        ViewData["ShowAds"] = hasPublishingQualityContent;
+        ViewData["NoIndex"] = total == 0 || !hasPublishingQualityContent;
         ViewBag.Search = search; ViewBag.Category = category; ViewBag.Location = location; ViewBag.Experience = experience; ViewBag.Sort = sort;
         ViewBag.Qualification = qualification;
         var totals = await available.GroupBy(j => 1).Select(g => new {
-            Total = g.Count(), Freshers = g.Count(j => j.Category == "Freshers Jobs"),
+            Freshers = g.Count(j => j.Category == "Freshers Jobs"),
             OffCampus = g.Count(j => j.Category == "Off Campus" || j.SubCategory == "Off Campus Drive"),
             WalkIn = g.Count(j => j.Category == "Walk-in" || j.SubCategory == "Walk-in Drive"),
             IT = g.Count(j => j.Category == "IT Jobs"), Government = g.Count(j => j.Category == "Government Jobs"),
@@ -80,7 +83,8 @@ public class HomeController : Controller
             Remote = g.Count(j => j.Category == "Work From Home Jobs" || j.Category == "WFH Jobs" || j.JobType == "Remote"),
             Core = g.Count(j => j.Category == "Core Engineering Jobs"), Bpo = g.Count(j => j.Category == "BPO / Support Jobs")
         }).FirstOrDefaultAsync();
-        ViewBag.TotalJobs = totals?.Total ?? 0;
+        // The hero count must describe the same filtered query that produced the displayed cards.
+        ViewBag.TotalJobs = total;
         ViewBag.TrendingJobs = await available.OrderByDescending(j => j.ViewsCount).ThenByDescending(j => j.PostedDate).Take(5).ToListAsync();
         ViewBag.PopularJobs = await available.OrderByDescending(j => j.ApplyClicks).ThenByDescending(j => j.PostedDate).Take(3).ToListAsync();
         var counts = new Dictionary<string, int> {
@@ -137,8 +141,8 @@ public class HomeController : Controller
         if (string.IsNullOrWhiteSpace(company) || string.IsNullOrWhiteSpace(title) || company.Length > 500 || title.Length > 500)
             return MissingJob();
         company = company.Trim(); title = title.Trim();
-        var matches = await _context.Jobs.AsNoTracking()
-            .Where(j => j.IsActive && j.CompanyName == company && j.Title == title && j.Slug != null && j.Slug != "")
+        var matches = await AvailableJobs()
+            .Where(j => j.CompanyName == company && j.Title == title && j.Slug != null && j.Slug != "")
             .Select(j => j.Slug).Take(2).ToListAsync();
         // Never choose an unrelated or ambiguous listing across databases.
         return matches.Count == 1
@@ -148,14 +152,16 @@ public class HomeController : Controller
 
     public async Task<IActionResult> Details(string slug)
     {
-        var job = await _context.Jobs.AsNoTracking().FirstOrDefaultAsync(j => j.Slug == slug && j.IsActive);
+        var job = await AvailableJobs().FirstOrDefaultAsync(j => j.Slug == slug);
         if (job == null) return MissingJob();
         if (!IsAdminSession)
         {
             await _context.Jobs.Where(j => j.Id == job.Id).ExecuteUpdateAsync(set => set.SetProperty(j => j.ViewsCount, j => j.ViewsCount + 1));
             job.ViewsCount++;
         }
-        ViewData["Canonical"] = Url.RouteUrl("job-details", new { slug = job.Slug }, "https", "d2djobs.in");
+        ViewData["Canonical"] = Origin + Url.RouteUrl("job-details", new { slug = job.Slug });
+        ViewData["NoIndex"] = JobQuality.RequiresReview(job);
+        ViewData["ShowAds"] = !JobQuality.RequiresReview(job);
         ViewBag.RelatedJobs = await AvailableJobs().Where(j => j.Category == job.Category && j.Id != job.Id).OrderByDescending(j => j.PostedDate).Take(4).ToListAsync();
         ViewBag.IsSaved = ReadSavedIds().Contains(job.Id);
         ViewData["Title"] = $"{job.Title} at {job.CompanyName} | D2DJobs";
@@ -208,9 +214,11 @@ public class HomeController : Controller
     public async Task<IActionResult> SavedJobs()
     {
         var ids = ReadSavedIds();
-        return View(await _context.Jobs.AsNoTracking().Where(j => j.IsActive && ids.Contains(j.Id)).OrderByDescending(j => j.PostedDate).ToListAsync());
+        return View(await AvailableJobs().Where(j => ids.Contains(j.Id)).OrderByDescending(j => j.PostedDate).ToListAsync());
     }
     public IActionResult About() => View();
+    [HttpGet("/editorial-policy")]
+    public IActionResult EditorialPolicy() => View();
     public IActionResult Privacy() => RedirectToAction(nameof(PrivacyPolicy));
     public IActionResult PrivacyPolicy() => View();
     public IActionResult Terms() => View();
@@ -227,6 +235,14 @@ public class HomeController : Controller
     }
     [ResponseCache(Duration = 0, Location = ResponseCacheLocation.None, NoStore = true)]
     public IActionResult Error() => View(new ErrorViewModel { RequestId = Activity.Current?.Id ?? HttpContext.TraceIdentifier });
+    [ResponseCache(Duration = 0, Location = ResponseCacheLocation.None, NoStore = true)]
+    public IActionResult StatusCodePage(int code)
+    {
+        Response.StatusCode = code is >= 400 and <= 599 ? code : StatusCodes.Status500InternalServerError;
+        return Response.StatusCode == StatusCodes.Status404NotFound
+            ? View("NotFound")
+            : View("Error", new ErrorViewModel { RequestId = Activity.Current?.Id ?? HttpContext.TraceIdentifier });
+    }
 
     public async Task<IActionResult> SearchSuggestions(string? term)
     {
@@ -236,18 +252,21 @@ public class HomeController : Controller
         return Json(await AvailableJobs().Where(j => EF.Functions.Like(j.Title, $"%{term}%") || EF.Functions.Like(j.CompanyName, $"%{term}%") || EF.Functions.Like(j.Skills, $"%{term}%")).Select(j => j.Title.Trim()).Distinct().OrderBy(title => title).Take(8).ToListAsync());
     }
     [HttpGet("/robots.txt")]
-    public IActionResult Robots() => Content($"User-agent: *\nAllow: /\nDisallow: /Admin\nDisallow: /Analytics\nDisallow: /Settings\nDisallow: /App_Data\nSitemap: {Origin}/sitemap.xml\n", "text/plain");
+    public IActionResult Robots() => Content($"User-agent: *\nAllow: /\nDisallow: /Admin\nDisallow: /Analytics\nDisallow: /Settings\nDisallow: /Readiness\nDisallow: /admin\nDisallow: /employer\nDisallow: /App_Data\nSitemap: {Origin}/sitemap.xml\n", "text/plain");
 
     [ResponseCache(Duration = 3600)]
     public async Task<IActionResult> Sitemap()
     {
-        var jobs = await AvailableJobs().OrderByDescending(j => j.PostedDate).Select(j => new { j.Slug, j.PostedDate }).ToListAsync();
+        var available = AvailableJobs();
+        var jobs = await available.Where(JobQuality.ReadyForIndex).OrderByDescending(j => j.PostedDate).Select(j => new { j.Slug, j.PostedDate }).ToListAsync();
         XNamespace ns = "http://www.sitemaps.org/schemas/sitemap/0.9";
         var origin = Origin;
         var root = new XElement(ns + "urlset");
-        foreach (var path in new[] { "/", "/Home/About", "/Home/Contact", "/Home/PrivacyPolicy", "/Home/Terms", "/Home/Disclaimer", "/Home/Advertise", "/job-alerts" })
+        foreach (var path in new[] { "/", "/Home/About", "/editorial-policy", "/Home/Contact", "/Home/PrivacyPolicy", "/Home/Terms", "/Home/Disclaimer", "/Home/Advertise", "/job-alerts", "/resume-builder" })
             root.Add(new XElement(ns + "url", new XElement(ns + "loc", origin + path)));
-        foreach (var category in JobCategories.All) root.Add(new XElement(ns + "url", new XElement(ns + "loc", origin + "/jobs/" + JobCategories.Slug(category))));
+        foreach (var category in JobCategories.All)
+            if (await CategoryJobs(available, category).AnyAsync())
+                root.Add(new XElement(ns + "url", new XElement(ns + "loc", origin + "/jobs/" + JobCategories.Slug(category))));
         foreach (var job in jobs.Where(j => !string.IsNullOrEmpty(j.Slug)))
             root.Add(new XElement(ns + "url", new XElement(ns + "loc", origin + "/job/" + Uri.EscapeDataString(job.Slug!)), new XElement(ns + "lastmod", job.PostedDate.ToString("yyyy-MM-dd"))));
         return Content(new XDocument(new XDeclaration("1.0", "utf-8", null), root).ToString(), "application/xml");

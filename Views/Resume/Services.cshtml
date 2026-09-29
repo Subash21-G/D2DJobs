@@ -1,0 +1,16 @@
+@model ResumeServiceRequest
+@{ ViewData["Title"] = "Optional resume services | D2DJobs"; }
+<a asp-action="Index">← Free resume builder</a>
+<div class="tools-heading"><div><span class="eyebrow">A HELPING HAND</span><h1>Put your best work forward.</h1><p>Optional personal support. Your resume builder and regular job listings remain free.</p></div></div>
+<div class="service-grid">
+<article class="tool-card"><span class="eyebrow">01 / REVIEW</span><h2>ATS Resume Review</h2><strong class="service-price">₹99–₹199</strong><p>Feedback on readability, structure, and relevant keywords for your target role. No guaranteed ATS score or interview outcome.</p></article>
+<article class="tool-card"><span class="eyebrow">02 / REWRITE</span><h2>Professional Resume</h2><strong class="service-price">₹299–₹499</strong><p>Help organising your education, experience, and projects into a clear professional resume.</p></article>
+<article class="tool-card"><span class="eyebrow">03 / COMPLETE PROFILE</span><h2>Resume + LinkedIn Optimization</h2><strong class="service-price">₹499–₹799</strong><p>Resume support plus suggestions for your LinkedIn headline, summary, and experience sections.</p></article>
+</div>
+<section class="tool-card request-card"><h2>Request a callback by email</h2><p>Tell us what you need. We will confirm the scope, final price, and delivery time before starting. No payment is collected here.</p>
+<form class="tools-form" method="post" asp-action="Services"><div asp-validation-summary="All" class="validation-summary"></div>
+<div class="form-grid"><div><label asp-for="Name">Your name</label><input asp-for="Name" required maxlength="100" autocomplete="name" /></div><div><label asp-for="Email"></label><input asp-for="Email" type="email" required maxlength="254" autocomplete="email" /></div></div>
+<label asp-for="Service"></label><select asp-for="Service">@foreach(var service in ResumeServiceRequest.Services){<option value="@service.Key">@service.Key — @service.Value</option>}</select>
+<label asp-for="Notes">Your target role and what you need (optional)</label><textarea asp-for="Notes" maxlength="2000" rows="4"></textarea>
+<p class="muted">Your name, email, and message will be shared with the D2DJobs admin team to respond to this request. Do not include passwords or identity documents.</p>
+<button class="primary-button" type="submit">Send service request</button></form></section>

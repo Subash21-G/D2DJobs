@@ -1,0 +1,18 @@
+@using Microsoft.AspNetCore.Authentication
+@{ var employer = await Context.AuthenticateAsync("Employer"); }
+<!DOCTYPE html>
+<html lang="en"><head><meta charset="utf-8" /><meta name="viewport" content="width=device-width, initial-scale=1" />
+<partial name="_SeoMeta" />
+<link rel="stylesheet" href="~/css/portal.css" asp-append-version="true" />
+<link rel="stylesheet" href="~/css/workspace.css" asp-append-version="true" />
+</head><body class="tools-page">
+<a class="skip-link" href="#main-content">Skip to content</a>
+<header class="tools-header"><a class="tools-brand" href="/">D2D<span>Jobs</span></a><nav aria-label="Workspace navigation"><a href="/">Find jobs</a><a asp-controller="Resume" asp-action="Index">Resume builder</a><a asp-controller="Employer" asp-action="Index">For employers</a>
+@if(employer.Succeeded && User.Identity?.AuthenticationType == "Employer"){<form method="post" asp-controller="Employer" asp-action="Logout"><button class="secondary-button" type="submit">Sign out</button></form>}
+</nav></header>
+<main id="main-content" class="tools-container">
+@if(TempData["Notice"] is string notice){<p class="tools-notice" role="status">@notice</p>}
+@RenderBody()</main>
+<footer class="tools-footer">D2DJobs · Job listings and the resume builder are free. <a asp-controller="Home" asp-action="PrivacyPolicy">Privacy policy</a> · <a asp-controller="Home" asp-action="Contact">Contact</a></footer>
+@await RenderSectionAsync("Scripts", required: false)
+</body></html>

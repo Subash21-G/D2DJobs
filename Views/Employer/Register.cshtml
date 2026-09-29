@@ -1,0 +1,10 @@
+@model EmployerRegisterInput
+@{ ViewData["Title"] = "Create an employer account | D2DJobs"; }
+<section class="auth-card tool-card"><span class="eyebrow">HIRE YOUR NEXT TEAMMATE</span><h1>Create your employer account</h1><p class="muted">Post openings, follow application clicks, and manage your recruitment campaigns.</p>
+<form method="post" asp-action="Register" class="tools-form"><div asp-validation-summary="All" class="validation-summary"></div>
+<label asp-for="CompanyName"></label><input asp-for="CompanyName" autocomplete="organization" required maxlength="200" />
+<label asp-for="Email">Work email</label><input asp-for="Email" type="email" autocomplete="email" required maxlength="254" />
+<label asp-for="Password"></label><input asp-for="Password" autocomplete="new-password" required minlength="12" maxlength="128" /><small>Use at least 12 characters.</small>
+<label asp-for="ConfirmPassword"></label><input asp-for="ConfirmPassword" autocomplete="new-password" required maxlength="128" />
+<p class="muted">Your company details and listings will be reviewed before publication. Featured placements are optional and quoted separately.</p>
+<button class="primary-button" type="submit">Create account</button></form><p>Already registered? <a asp-action="Login">Sign in</a></p></section>

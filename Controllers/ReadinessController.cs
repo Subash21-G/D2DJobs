@@ -17,7 +17,9 @@ public class ReadinessController(IOptionsSnapshot<SiteOptions> site, IOptionsSna
         var validSite = System.ComponentModel.DataAnnotations.Validator.TryValidateObject(site.Value, new(site.Value), validation, true);
         report.Checks.Add(new("Public domain", validSite && !string.IsNullOrWhiteSpace(site.Value.SiteUrl) ? "Configured" : "Action needed", "Set the public HTTPS origin in Site setup; verify canonical links on the live domain."));
         report.Checks.Add(new("Job alerts", validSite && (!string.IsNullOrWhiteSpace(site.Value.TelegramUrl) || !string.IsNullOrWhiteSpace(site.Value.WhatsAppUrl)) ? "Configured" : "RSS only", "RSS is available. Channel links require your real Telegram or WhatsApp URL; delivery is not automatic."));
-        report.Checks.Add(new("Advertising", ads.Value.Slot("ListingInline") != null || ads.Value.Slot("JobSidebar") != null ? "Configured" : "Disabled / incomplete", "Configuration does not verify account approval, consent collection or live ad delivery."));
+        report.Checks.Add(new("AdSense ownership", ads.Value.HasPublisher ? "Configured" : "Action needed", ads.Value.HasPublisher ? "The publisher ID supplies both an ads.txt entry and an ownership meta tag. Confirm AdSense detects the site." : "Add the ca-pub publisher ID so AdSense can verify ownership through ads.txt or the site meta tag."));
+        report.Checks.Add(new("Consent platform", ads.Value.ConsentConfigured ? "Verify live" : "Action needed", "Use a Google-certified CMP where required. This setting records your confirmation; it does not install or test the CMP."));
+        report.Checks.Add(new("Advertising", ads.Value.Slot("ListingInline") != null || ads.Value.Slot("JobSidebar") != null ? "Configured" : "Disabled / incomplete", "Ad slots activate only after approval, consent confirmation and explicit enablement. Configuration does not verify live ad delivery."));
 try
         {
             var pending = (await db.Database.GetPendingMigrationsAsync(cancellationToken)).Count();

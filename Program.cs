@@ -1,4 +1,3 @@
-using JobForFresher.Interfaces;
 using JobForFresher.Services;
 using JobForFresher.Models;
 using Microsoft.AspNetCore.Authentication;
@@ -16,7 +15,6 @@ builder.Services.Configure<AdvertisingOptions>(builder.Configuration.GetSection(
 builder.Services.Configure<MonetagOptions>(builder.Configuration.GetSection("Monetag"));
 
 builder.Services.Configure<SiteOptions>(builder.Configuration.GetSection("SiteSettings"));
-builder.Services.AddScoped<IEmailService, EmailService>();
 builder.Services.AddScoped<ExcelJobImporter>();
 builder.Services.AddDbContext<ApplicationDbContext>(options => options.UseSqlServer(builder.Configuration.GetConnectionString("DefaultConnection")));
 Directory.CreateDirectory(Path.Combine(builder.Environment.ContentRootPath, "App_Data", "Keys"));
@@ -35,13 +33,28 @@ builder.Services.AddAuthentication(CookieAuthenticationDefaults.AuthenticationSc
         if (!int.TryParse(id, out var adminId) || !await db.AdminUsers.AnyAsync(a => a.Id == adminId && a.SecurityStamp == stamp))
         { context.RejectPrincipal(); await context.HttpContext.SignOutAsync(); }
     };
+}).AddCookie("Employer", options =>
+{
+    options.LoginPath = "/employer/login"; options.AccessDeniedPath = "/employer/login";
+    options.Cookie.Name = "D2DJobs.Employer"; options.Cookie.HttpOnly = true;
+    options.Cookie.SecurePolicy = CookieSecurePolicy.Always; options.Cookie.SameSite = SameSiteMode.Strict;
+    options.ExpireTimeSpan = TimeSpan.FromHours(2); options.SlidingExpiration = true;
+    options.Events.OnValidatePrincipal = async context =>
+    {
+        var db = context.HttpContext.RequestServices.GetRequiredService<ApplicationDbContext>();
+        var stamp = context.Principal?.FindFirstValue("security_stamp");
+        if (!int.TryParse(context.Principal?.FindFirstValue(ClaimTypes.NameIdentifier), out var id) ||
+            !await db.EmployerAccounts.AnyAsync(a => a.Id == id && a.SecurityStamp == stamp))
+        { context.RejectPrincipal(); await context.HttpContext.SignOutAsync("Employer"); }
+    };
 });
 builder.Services.AddAuthorization();
 builder.Services.AddRateLimiter(options =>
 {
     options.RejectionStatusCode = 429;
+    options.AddPolicy("public-submission", context => RateLimitPartition.GetFixedWindowLimiter(context.Connection.RemoteIpAddress?.ToString() ?? "unknown", _ => new FixedWindowRateLimiterOptions { PermitLimit = 5, Window = TimeSpan.FromMinutes(1), QueueLimit = 0, AutoReplenishment = true }));
     options.AddPolicy("admin-login", context => RateLimitPartition.GetFixedWindowLimiter(context.Connection.RemoteIpAddress?.ToString() ?? "unknown", _ => new FixedWindowRateLimiterOptions { PermitLimit = 10, Window = TimeSpan.FromMinutes(1), QueueLimit = 0, AutoReplenishment = true }));
-    options.OnRejected = async (context, token) => { context.HttpContext.Response.Headers.RetryAfter = "60"; await context.HttpContext.Response.WriteAsync("Too many sign-in attempts. Please wait one minute and try again.", token); };
+    options.OnRejected = async (context, token) => { context.HttpContext.Response.Headers.RetryAfter = "60"; await context.HttpContext.Response.WriteAsync("Too many requests. Please wait one minute and try again.", token); };
 });
 var app = builder.Build();
 // Migrations are explicit in production; run the reviewed script before deploying.
@@ -66,6 +79,23 @@ if (builder.Configuration.GetValue<bool>("AdminSettings:BootstrapEnabled"))
     }
 }
 if (!app.Environment.IsDevelopment()) { app.UseExceptionHandler("/Home/Error"); app.UseHsts(); }
+app.UseStatusCodePagesWithReExecute("/Home/StatusCodePage", "?code={0}");
+if (!app.Environment.IsDevelopment() && Uri.TryCreate(app.Configuration["SiteSettings:SiteUrl"], UriKind.Absolute, out var canonicalSite))
+{
+    var alternateHost = canonicalSite.Host.StartsWith("www.", StringComparison.OrdinalIgnoreCase)
+        ? canonicalSite.Host[4..]
+        : "www." + canonicalSite.Host;
+    app.Use(async (context, next) =>
+    {
+        if (context.Request.Host.Host.Equals(alternateHost, StringComparison.OrdinalIgnoreCase))
+        {
+            var target = canonicalSite.GetLeftPart(UriPartial.Authority) + context.Request.PathBase + context.Request.Path + context.Request.QueryString;
+            context.Response.Redirect(target, permanent: true, preserveMethod: true);
+            return;
+        }
+        await next();
+    });
+}
 app.UseHttpsRedirection();
 app.Use(async (context, next) =>
 {

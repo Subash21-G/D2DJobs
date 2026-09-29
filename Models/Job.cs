@@ -58,6 +58,7 @@ namespace JobForFresher.Models
         public string? Slug { get; set; }
 
         public DateTime? ExpiryDate { get; set; }
+        public DateTime? AvailableFrom { get; set; }
 
         public bool IsActive { get; set; } = true;
 

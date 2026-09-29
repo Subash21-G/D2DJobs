@@ -1,0 +1,7 @@
+@model EmployerLoginInput
+@{ ViewData["Title"] = "Employer sign in | D2DJobs"; }
+<section class="auth-card tool-card"><span class="eyebrow">EMPLOYER WORKSPACE</span><h1>Welcome back.</h1><p class="muted">Manage your jobs and see how your campaigns are performing.</p>
+<form method="post" asp-action="Login" class="tools-form"><div asp-validation-summary="All" class="validation-summary"></div>
+<label asp-for="Email">Work email</label><input asp-for="Email" type="email" autocomplete="username" required maxlength="254" />
+<label asp-for="Password"></label><input asp-for="Password" autocomplete="current-password" required maxlength="128" />
+<button class="primary-button" type="submit">Sign in</button></form><p>New to D2DJobs? <a asp-action="Register">Create an employer account</a></p><p class="muted">Need account help? <a asp-controller="Home" asp-action="Contact">Contact support</a>.</p></section>

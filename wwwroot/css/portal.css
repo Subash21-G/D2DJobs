@@ -144,3 +144,6 @@
 .related-grid .opportunity-card{display:flex;flex-direction:column;height:100%}
 .related-grid .job-card-bottom{margin-top:auto}
 .related-grid .job-facts{display:grid;gap:12px}
+
+.job-card-top{flex-wrap:wrap}
+.review-badge{background:#fff4d6;color:#795600;font-size:.75rem;border-radius:4px;padding:3px 8px;font-weight:650}

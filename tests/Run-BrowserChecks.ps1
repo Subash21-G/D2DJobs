@@ -1,5 +1,5 @@
 [CmdletBinding()]
-param([string]$PlaywrightModules, [int]$Port = 7233)
+param([string]$PlaywrightModules, [int]$Port = 7233, [string]$TestScript = 'tests/browser.cjs')
 $ErrorActionPreference = 'Stop'
 $repo = Split-Path $PSScriptRoot -Parent
 Push-Location $repo
@@ -16,6 +16,7 @@ try {
     $env:AdminSettings__Email = 'regression@example.invalid'
     $env:AdminSettings__Password = [Guid]::NewGuid().ToString('N') + '!Test1'
     $env:Advertising__Enabled = 'false'
+    $env:Advertising__PublisherId = 'ca-pub-0000000000000000'
     $env:TEST_ADMIN_USER = $env:AdminSettings__UserName
     $env:TEST_ADMIN_PASSWORD = $env:AdminSettings__Password
     $env:TEST_ISOLATED_DATABASE = $database
@@ -43,7 +44,7 @@ try {
         } catch { Start-Sleep -Seconds 1 }
     }
     if (-not $ready) { throw 'Test server did not start.' }
-    node tests/browser.cjs
+    node $TestScript
     if ($LASTEXITCODE -ne 0) { throw 'Browser regression failed.' }
     Write-Output "Isolated database retained for inspection: $database"
 } finally {

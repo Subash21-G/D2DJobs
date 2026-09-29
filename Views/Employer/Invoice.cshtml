@@ -1,0 +1,10 @@
+@model CampaignInvoice
+@{ ViewData["Title"] = "Invoice " + Model.Number + " | D2DJobs"; }
+<div class="tool-actions no-print"><a asp-action="Index">← Back to campaigns</a><button class="primary-button" type="button" id="print-invoice">Print / save PDF</button></div>
+<article class="tool-card invoice-sheet"><span class="eyebrow">D2DJOBS · CAMPAIGN INVOICE</span><h1>Invoice @Model.Number</h1><span class="tool-badge">@(Model.PaidUtc.HasValue ? "Paid" : "Unpaid")</span>
+<p>Issued: @Model.IssuedUtc.ToString("dd MMM yyyy") UTC</p>
+<div class="form-grid"><section><h2>From</h2><p class="preserve-lines">@Model.SellerDetails</p></section><section><h2>Bill to</h2><p class="preserve-lines">@Model.BillTo</p></section></div>
+<hr /><h2>@Model.Description</h2><p>Campaign: @Model.EmployerCampaign.Title</p><p class="invoice-total">Total (INR): ₹@Model.Amount.ToString("N2")</p>
+@if(Model.PaidUtc.HasValue){<p>Payment confirmed: @Model.PaidUtc.Value.ToString("dd MMM yyyy") UTC</p>}else{<p>Contact D2DJobs using your agreed payment arrangements and quote this invoice number.</p>}
+</article>
+@section Scripts{<script src="~/js/invoice.js" asp-append-version="true"></script>}
