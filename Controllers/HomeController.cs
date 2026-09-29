@@ -236,6 +236,8 @@ public class HomeController : Controller
     public IActionResult About() => View();
     [HttpGet("/editorial-policy")]
     public IActionResult EditorialPolicy() => View();
+    [HttpGet("/career-guide")]
+    public IActionResult CareerGuide() => View();
     public IActionResult Privacy() => RedirectToAction(nameof(PrivacyPolicy));
     public IActionResult PrivacyPolicy() => View();
     public IActionResult Terms() => View();
@@ -280,7 +282,7 @@ public class HomeController : Controller
         XNamespace ns = "http://www.sitemaps.org/schemas/sitemap/0.9";
         var origin = Origin;
         var root = new XElement(ns + "urlset");
-        var staticPaths = new List<string> { "/Home/About", "/editorial-policy", "/Home/Contact", "/Home/PrivacyPolicy", "/Home/Terms", "/Home/Disclaimer", "/Home/Advertise", "/job-alerts", "/resume-builder" };
+        var staticPaths = new List<string> { "/Home/About", "/editorial-policy", "/career-guide", "/Home/Contact", "/Home/PrivacyPolicy", "/Home/Terms", "/Home/Disclaimer", "/Home/Advertise", "/job-alerts", "/resume-builder" };
         if (jobs.Count > 0) staticPaths.Insert(0, "/");
         foreach (var path in staticPaths)
             root.Add(new XElement(ns + "url", new XElement(ns + "loc", origin + path)));
