@@ -8,9 +8,27 @@ bool requiresReview = JobQuality.RequiresReview(Model);
 bool canApply = Uri.TryCreate(Model.ApplyLink, UriKind.Absolute, out var applyUri) && (applyUri.Scheme == "https" || applyUri.Scheme == "http");
 string reportSubject = Uri.EscapeDataString("Report job listing: " + Model.Title);
 string reportBody = Uri.EscapeDataString($"Listing: {Context.Request.Scheme}://{Context.Request.Host}/job/{Model.Slug}\n\nIssue (expired, incorrect details, broken link or other):\n\nDetails:");
-// Resolve the listing on the public site instead of copying a database-specific slug.
-string pageUrl = Url.RouteUrl("resolve-job", new { company = Model.CompanyName, title = Model.Title }, "https", "d2djobs.in")!;
+// Use the same canonical job URL for sharing and structured data.
+string pageUrl = SiteSettings.Value.SiteUrl.TrimEnd('/') + Url.RouteUrl("job-details", new { slug = Model.Slug });
 string shareUrl = Uri.EscapeDataString(pageUrl);
+var schemaDescriptionParts = new[]
+{
+    Model.Description,
+    $"Role: {Model.Role}",
+    $"Company: {Model.CompanyName}",
+    $"Location: {Model.Location}",
+    $"Job type: {Model.JobType}",
+    $"Experience: {Model.Experience}",
+    $"Qualification: {Model.Qualification}",
+    $"Salary: {Model.Salary}",
+    $"Skills and requirements: {Model.Skills}",
+    $"Eligibility: {Model.Eligibility}",
+    $"Selection process: {Model.SelectionProcess}",
+    Model.WalkInDate.HasValue ? $"Walk-in date: {Model.WalkInDate.Value.ToString("yyyy-MM-dd", System.Globalization.CultureInfo.InvariantCulture)}" : null,
+    $"Application: Review the eligibility and apply through the employer's official recruitment page."
+}.Where(part => !string.IsNullOrWhiteSpace(part))
+ .Select(part => System.Net.WebUtility.HtmlEncode(part!.Trim()));
+string schemaDescription = string.Join("<br>", schemaDescriptionParts);
 var shareLines = new List<string> { $"\U0001F680 {Model.Title}", "" };
 foreach (var (label, value) in new[] {
     ("\U0001F3E2 Company", Model.CompanyName),
@@ -35,7 +53,9 @@ shareLines.Add("\U0001F4E2 Share with someone looking for a job!");string shareP
 string shareText = Uri.EscapeDataString(sharePlainText);
 var schema = new Dictionary<string, object?> {
     ["@context"] = "https://schema.org", ["@type"] = "JobPosting", ["title"] = Model.Title,
-    ["description"] = Model.Description, ["datePosted"] = Model.PostedDate.ToString("yyyy-MM-dd"),
+    ["description"] = schemaDescription, ["datePosted"] = Model.PostedDate.ToString("yyyy-MM-dd"),
+    ["url"] = pageUrl,
+    ["identifier"] = new Dictionary<string, object> { ["@type"] = "PropertyValue", ["name"] = Model.CompanyName, ["value"] = Model.Id.ToString(System.Globalization.CultureInfo.InvariantCulture) },
     ["hiringOrganization"] = new Dictionary<string, object> { ["@type"] = "Organization", ["name"] = Model.CompanyName },
     ["jobLocation"] = new Dictionary<string, object> { ["@type"] = "Place", ["address"] = new Dictionary<string, object> { ["@type"] = "PostalAddress", ["addressLocality"] = Model.Location, ["addressCountry"] = "IN" } }
 };

@@ -1,4 +1,3 @@
-@inject Microsoft.Extensions.Options.IOptions<JobForFresher.Models.MonetagOptions> Monetag
 @inject Microsoft.Extensions.Options.IOptions<JobForFresher.Models.AdvertisingOptions> AdSettings
 @inject IWebHostEnvironment HostEnvironment
 
@@ -11,10 +10,6 @@
     <!-- Cuelinks Website Verification -->
     <meta name="cuelinks-verification" content="VERIFY-CL-TAZUOLFO" />
 
-@if (showAds && AdSettings.Value.ConsentConfigured && Monetag.Value.IsReady)
-{
-    <script src="@Monetag.Value.ScriptUrl" data-zone="@Monetag.Value.ZoneId" async data-cfasync="false"></script>
-}
 <link rel="alternate" type="application/rss+xml" title="D2DJobs job alerts" href="@Url.RouteUrl("job-feed")" /><link rel="icon" href="~/favicon.ico" /><partial name="_SeoMeta" />
 <link rel="stylesheet" href="~/lib/bootstrap/dist/css/bootstrap.min.css" />
 <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.2/css/all.min.css" rel="stylesheet" />

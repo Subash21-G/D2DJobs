@@ -1,10 +1,24 @@
 @inject Microsoft.Extensions.Options.IOptions<JobForFresher.Models.SiteOptions> SiteSettings
 @inject Microsoft.Extensions.Options.IOptions<JobForFresher.Models.AdvertisingOptions> AdSettings
 @{
-    var title = ViewData["Title"] ?? "D2DJobs";
-    var description = ViewData["MetaDescription"] ?? "Explore fresher jobs, off campus drives, walk-in interviews, government jobs and internships across India. Check eligibility and apply online.";
     var controller = ViewContext.RouteData.Values["controller"]?.ToString();
     var action = ViewContext.RouteData.Values["action"]?.ToString();
+    var pageName = action switch
+    {
+        "Index" or null => "Jobs",
+        "About" => "About D2DJobs",
+        "Contact" => "Contact D2DJobs",
+        "PrivacyPolicy" or "Privacy" => "Privacy Policy",
+        "Terms" => "Terms and Conditions",
+        "EditorialPolicy" => "Editorial Policy",
+        "Disclaimer" => "Disclaimer",
+        "Advertise" => "Advertise with D2DJobs",
+        "Alerts" => "Job Alerts",
+        "Details" => "Job Details",
+        _ => action
+    };
+    var title = ViewData["Title"] ?? $"{pageName} | D2DJobs";
+    var description = ViewData["MetaDescription"] ?? "Explore fresher jobs, off campus drives, walk-in interviews, government jobs and internships across India. Check eligibility and apply online.";
     bool noIndex = ViewData["NoIndex"] is true || controller is "Admin" or "Analytics" or "Settings" or "Readiness" or "Employer" or "Commerce" || action is "SavedJobs" or "Error" || Context.Response.StatusCode >= 400 || Context.Request.Query.Count > 0;
     var configuredOrigin = Uri.TryCreate(SiteSettings.Value.SiteUrl, UriKind.Absolute, out var configuredUrl) && configuredUrl.Scheme == "https" ? configuredUrl.GetLeftPart(UriPartial.Authority) : $"{Context.Request.Scheme}://{Context.Request.Host}{Context.Request.PathBase}";
     var canonical = ViewData["Canonical"] as string ?? configuredOrigin + Context.Request.Path;
@@ -25,3 +39,17 @@
 <meta name="twitter:card" content="summary" />
 <meta name="twitter:title" content="@title" />
 <meta name="twitter:description" content="@description" />
+<script type="application/ld+json">@Html.Raw(System.Text.Json.JsonSerializer.Serialize(new Dictionary<string, object>
+{
+    ["@context"] = "https://schema.org",
+    ["@type"] = "WebSite",
+    ["name"] = "D2DJobs",
+    ["url"] = configuredOrigin + "/"
+}))</script>
+<script type="application/ld+json">@Html.Raw(System.Text.Json.JsonSerializer.Serialize(new Dictionary<string, object>
+{
+    ["@context"] = "https://schema.org",
+    ["@type"] = "Organization",
+    ["name"] = "D2DJobs",
+    ["url"] = configuredOrigin + "/"
+}))</script>

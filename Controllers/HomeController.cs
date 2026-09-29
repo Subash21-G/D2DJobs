@@ -45,7 +45,23 @@ public class HomeController : Controller
         if (categorySlug != null && !Request.Path.StartsWithSegments("/jobs"))
             return RedirectToRoutePermanent("category", new { categorySlug, search, location, experience, qualification, page, sort, batch });
         ViewBag.Batch = batch;
-        ViewData["MetaDescription"] = string.IsNullOrEmpty(category) ? "Browse current fresher jobs, off campus drives and internships. Filter by graduation batch, qualification and location." : $"Explore current {category} across India. Check graduation batch, eligibility, closing dates and official application details.";
+        ViewData["Title"] = string.IsNullOrEmpty(category)
+            ? "Latest Fresher Jobs, Off-Campus Drives & Internships in India | D2DJobs"
+            : $"{category} for Freshers in India | Latest Openings | D2DJobs";
+        ViewData["MetaDescription"] = category switch
+        {
+            "Off Campus" => "Find current off-campus drives for freshers in India. Review eligibility, graduation batches, deadlines and official application links.",
+            "Walk-in" => "Browse current walk-in interviews in India. Check job locations, eligibility, interview dates and employer application details.",
+            "Internship Programs" => "Explore internship openings for students and freshers in India. Check qualifications, skills, dates and official application details.",
+            "Work From Home Jobs" => "Find remote and work-from-home jobs for freshers in India. Review role requirements, location details and official application links.",
+            "Government Jobs" => "Browse government job openings and recruitment updates. Check qualifications, eligibility, important dates and official notices before applying.",
+            "Bank Jobs" => "Explore bank job openings for freshers in India. Review qualifications, eligibility and application information from official sources.",
+            "IT Jobs" => "Find IT and software jobs for freshers in India. Explore roles, required skills, locations and employer application details.",
+            "Core Engineering Jobs" => "Browse core engineering opportunities for freshers in India. Check branches, qualifications, locations and application details.",
+            "BPO / Support Jobs" => "Explore BPO and customer support jobs for freshers in India. Review role requirements, locations and official application details.",
+            "Freshers Jobs" => "Browse current fresher jobs across India. Check qualifications, skills, locations and application deadlines before applying.",
+            _ => "Browse current fresher jobs, off-campus drives and internships in India. Filter openings by graduation batch, qualification and location."
+        };
         ViewData["Canonical"] = Origin + (categorySlug == null ? "/" : "/jobs/" + categorySlug);
         var available = AvailableJobs();
         var jobs = available;
@@ -165,7 +181,8 @@ public class HomeController : Controller
         ViewBag.RelatedJobs = await AvailableJobs().Where(j => j.Category == job.Category && j.Id != job.Id).OrderByDescending(j => j.PostedDate).Take(4).ToListAsync();
         ViewBag.IsSaved = ReadSavedIds().Contains(job.Id);
         ViewData["Title"] = $"{job.Title} at {job.CompanyName} | D2DJobs";
-        ViewData["MetaDescription"] = $"{job.Title} at {job.CompanyName} in {job.Location}. Check eligibility, skills and application details.";
+        var jobDescription = $"{job.Title} at {job.CompanyName} in {job.Location}. Check {job.Qualification} eligibility, skills and application details.";
+        ViewData["MetaDescription"] = jobDescription.Length <= 160 ? jobDescription : jobDescription[..157].TrimEnd() + "...";
         return View(job);
     }
     public async Task<IActionResult> ApplyClick(int id)
@@ -258,14 +275,17 @@ public class HomeController : Controller
     public async Task<IActionResult> Sitemap()
     {
         var available = AvailableJobs();
-        var jobs = await available.Where(JobQuality.ReadyForIndex).OrderByDescending(j => j.PostedDate).Select(j => new { j.Slug, j.PostedDate }).ToListAsync();
+        var indexable = available.Where(JobQuality.ReadyForIndex);
+        var jobs = await indexable.OrderByDescending(j => j.PostedDate).Select(j => new { j.Slug, j.PostedDate }).ToListAsync();
         XNamespace ns = "http://www.sitemaps.org/schemas/sitemap/0.9";
         var origin = Origin;
         var root = new XElement(ns + "urlset");
-        foreach (var path in new[] { "/", "/Home/About", "/editorial-policy", "/Home/Contact", "/Home/PrivacyPolicy", "/Home/Terms", "/Home/Disclaimer", "/Home/Advertise", "/job-alerts", "/resume-builder" })
+        var staticPaths = new List<string> { "/Home/About", "/editorial-policy", "/Home/Contact", "/Home/PrivacyPolicy", "/Home/Terms", "/Home/Disclaimer", "/Home/Advertise", "/job-alerts", "/resume-builder" };
+        if (jobs.Count > 0) staticPaths.Insert(0, "/");
+        foreach (var path in staticPaths)
             root.Add(new XElement(ns + "url", new XElement(ns + "loc", origin + path)));
         foreach (var category in JobCategories.All)
-            if (await CategoryJobs(available, category).AnyAsync())
+            if (await CategoryJobs(indexable, category).AnyAsync())
                 root.Add(new XElement(ns + "url", new XElement(ns + "loc", origin + "/jobs/" + JobCategories.Slug(category))));
         foreach (var job in jobs.Where(j => !string.IsNullOrEmpty(j.Slug)))
             root.Add(new XElement(ns + "url", new XElement(ns + "loc", origin + "/job/" + Uri.EscapeDataString(job.Slug!)), new XElement(ns + "lastmod", job.PostedDate.ToString("yyyy-MM-dd"))));
