@@ -14,7 +14,8 @@ foreach (var (label, value) in new[] {
 {
     if (!string.IsNullOrWhiteSpace(value)) shareLines.Add($"{label}: {value.Trim()}");
 }
-if (Model.WalkInDate.HasValue) shareLines.Add($"\U0001F4C5 Walk-in: {Model.WalkInDate.Value.ToString("dd MMMM yyyy", System.Globalization.CultureInfo.InvariantCulture)}");
+if (Model.WalkInStartDate.HasValue || Model.WalkInEndDate.HasValue) shareLines.Add($"\U0001F4C5 Walk-in: {Model.WalkInStartDate?.ToString("dd MMMM yyyy", System.Globalization.CultureInfo.InvariantCulture) ?? ""}{(Model.WalkInStartDate.HasValue && Model.WalkInEndDate.HasValue ? " – " : "")}{Model.WalkInEndDate?.ToString("dd MMMM yyyy", System.Globalization.CultureInfo.InvariantCulture) ?? ""}");
+else if (Model.WalkInDate.HasValue) shareLines.Add($"\U0001F4C5 Walk-in: {Model.WalkInDate.Value.ToString("dd MMMM yyyy", System.Globalization.CultureInfo.InvariantCulture)}");
 if (Model.ExpiryDate.HasValue) shareLines.Add($"\U0001F4C5 Apply by: {Model.ExpiryDate.Value.ToString("dd MMMM yyyy", System.Globalization.CultureInfo.InvariantCulture)}");
 shareLines.Add("");
 shareLines.Add($"\U0001F517 Apply here: {pageUrl}");

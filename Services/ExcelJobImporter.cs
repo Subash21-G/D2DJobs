@@ -23,6 +23,11 @@ public sealed class ExcelJobImporter
         ["batchto"] = nameof(Job.BatchTo), ["batch to"] = nameof(Job.BatchTo),
         ["eligibility"] = nameof(Job.Eligibility), ["selectionprocess"] = nameof(Job.SelectionProcess),
         ["selection process"] = nameof(Job.SelectionProcess), ["walkindate"] = nameof(Job.WalkInDate),
+        ["sourcetype"] = nameof(Job.SourceType), ["source type"] = nameof(Job.SourceType),
+        ["sourceposteddate"] = nameof(Job.SourcePostedDate), ["source posted date"] = nameof(Job.SourcePostedDate),
+        ["posteddate"] = nameof(Job.SourcePostedDate), ["posted date"] = nameof(Job.SourcePostedDate),
+        ["walkinstartdate"] = nameof(Job.WalkInStartDate), ["walk in start date"] = nameof(Job.WalkInStartDate),
+        ["walkinenddate"] = nameof(Job.WalkInEndDate), ["walk in end date"] = nameof(Job.WalkInEndDate),
         ["applicationinstructions"] = nameof(Job.ApplicationInstructions), ["application instructions"] = nameof(Job.ApplicationInstructions),
         ["documentsrequired"] = nameof(Job.DocumentsRequired), ["documents required"] = nameof(Job.DocumentsRequired),
         ["editorialnote"] = nameof(Job.EditorialNote), ["editorial note"] = nameof(Job.EditorialNote),
@@ -81,7 +86,8 @@ public sealed class ExcelJobImporter
         {
             Title = Get(values, nameof(Job.Title)),
             CompanyName = Get(values, nameof(Job.CompanyName)),
-            Category = Get(values, nameof(Job.Category)),
+            Category = JobCategories.Normalize(Get(values, nameof(Job.Category))) ?? Get(values, nameof(Job.Category)),
+            SourceType = JobSourceTypes.Normalize(Get(values, nameof(Job.SourceType))),
             SubCategory = Get(values, nameof(Job.SubCategory)),
             Role = Get(values, nameof(Job.Role)),
             Location = Get(values, nameof(Job.Location)),
@@ -106,6 +112,9 @@ public sealed class ExcelJobImporter
         if (TryInt(values, nameof(Job.BatchTo), rowNumber, errors, out var batchTo)) job.BatchTo = batchTo;
         if (TryDate(values, nameof(Job.ExpiryDate), rowNumber, errors, out var expiry)) job.ExpiryDate = expiry;
         if (TryDate(values, nameof(Job.WalkInDate), rowNumber, errors, out var walkIn)) job.WalkInDate = walkIn;
+        if (TryDate(values, nameof(Job.WalkInStartDate), rowNumber, errors, out var walkInStart)) job.WalkInStartDate = walkInStart;
+        if (TryDate(values, nameof(Job.WalkInEndDate), rowNumber, errors, out var walkInEnd)) job.WalkInEndDate = walkInEnd;
+        if (TryDate(values, nameof(Job.SourcePostedDate), rowNumber, errors, out var sourcePosted)) job.SourcePostedDate = sourcePosted;
         if (TryDate(values, nameof(Job.LastVerifiedUtc), rowNumber, errors, out var verified)) job.LastVerifiedUtc = verified?.ToUniversalTime();
 
         var validation = new List<System.ComponentModel.DataAnnotations.ValidationResult>();

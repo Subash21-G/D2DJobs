@@ -13,7 +13,12 @@ namespace JobForFresher.Models
         [StringLength(5000)] public string? ApplicationInstructions { get; set; }
         [StringLength(3000)] public string? DocumentsRequired { get; set; }
         [StringLength(3000)] public string? EditorialNote { get; set; }
+        [StringLength(32)] public string? SourceType { get; set; }
+        public DateTime? SourcePostedDate { get; set; }
+        public DateTime? ImportedUtc { get; set; }
         public DateTime? WalkInDate { get; set; }
+        public DateTime? WalkInStartDate { get; set; }
+        public DateTime? WalkInEndDate { get; set; }
         [StringLength(1000)] public string? WalkInVenue { get; set; }
         public DateTime? LastVerifiedUtc { get; set; }
         public IEnumerable<ValidationResult> Validate(ValidationContext context)
@@ -26,6 +31,8 @@ namespace JobForFresher.Models
             if (LastVerifiedUtc > DateTime.UtcNow) yield return new("The verified date cannot be in the future.", [nameof(LastVerifiedUtc)]);
             if (ExpiryDate.HasValue && AvailableFrom.HasValue && ExpiryDate.Value.Date < AvailableFrom.Value.Date)
                 yield return new("The closing date cannot be earlier than the first publication date.", [nameof(ExpiryDate), nameof(AvailableFrom)]);
+            if (WalkInStartDate.HasValue && WalkInEndDate.HasValue && WalkInEndDate < WalkInStartDate)
+                yield return new("The walk-in end date cannot be earlier than the start date.", [nameof(WalkInStartDate), nameof(WalkInEndDate)]);
         }
         public int Id { get; set; }
 

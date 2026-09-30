@@ -54,6 +54,7 @@
 .explore-panel,.career-guide{margin-top:36px;padding:28px;background:var(--surface);border:1px solid var(--line);border-radius:12px;min-width:0}
 .explore-panel>p,.career-guide p{color:var(--muted)}
 .explore-panel h2,.career-guide h2{font-size:1.5rem;line-height:1.35;margin:10px 0 14px}
+.career-guide>p:last-child .details-link{display:inline-flex;max-width:100%;white-space:normal;overflow-wrap:anywhere;line-height:1.45}
 .explore-actions{display:flex;flex-wrap:wrap;gap:12px;margin-top:22px}
 .guide-grid,.related-grid{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:20px;margin-top:24px}
 .guide-grid h3{font-size:1.1rem;margin:10px 0}.guide-grid>*,.related-grid>*{min-width:0}
