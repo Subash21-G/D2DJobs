@@ -1,5 +1,5 @@
 [CmdletBinding()]
-param([string]$PlaywrightModules, [int]$Port = 7233, [string]$TestScript = 'tests/browser.cjs')
+param([string]$PlaywrightModules, [int]$Port = 7233, [string]$TestScript = 'tests/browser.cjs', [switch]$VerifyAdGating)
 $ErrorActionPreference = 'Stop'
 $repo = Split-Path $PSScriptRoot -Parent
 Push-Location $repo
@@ -17,6 +17,18 @@ try {
     $env:AdminSettings__Password = [Guid]::NewGuid().ToString('N') + '!Test1'
     $env:Advertising__Enabled = 'false'
     $env:Advertising__PublisherId = 'ca-pub-0000000000000000'
+    if ($VerifyAdGating) {
+        # Fake ad configuration only, inside the isolated test server. The content-quality
+        # browser script blocks all non-local requests so no ad requests are sent.
+        if ($TestScript -ne 'tests/content-quality.cjs') { throw 'Ad gate verification requires the content-quality test script.' }
+        $env:ASPNETCORE_ENVIRONMENT = 'Production'
+        $env:Database__ApplyMigrations = 'true'
+        $env:Advertising__Enabled = 'true'
+        $env:Advertising__SiteApproved = 'true'
+        $env:Advertising__ConsentConfigured = 'true'
+        $env:Advertising__Slots__ListingInline = '0000000000'
+        $env:Advertising__Slots__JobSidebar = '0000000000'
+    }
     $env:TEST_ADMIN_USER = $env:AdminSettings__UserName
     $env:TEST_ADMIN_PASSWORD = $env:AdminSettings__Password
     $env:TEST_ISOLATED_DATABASE = $database

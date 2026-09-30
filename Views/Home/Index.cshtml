@@ -9,6 +9,7 @@ var trending = ViewBag.TrendingJobs as List<Job> ?? new();
 var popular = ViewBag.PopularJobs as List<Job> ?? new();
 var sections = ViewBag.CategorySections as Dictionary<string, List<Job>> ?? new();
 bool filtered = batch.HasValue || !string.IsNullOrWhiteSpace(category + search + location + experience + qualification);
+var categoryGuide = CategoryPreparationGuides.For(category);
 ViewData["Title"] = (string.IsNullOrEmpty(category) ? "Latest fresher jobs & off campus drives" : category) + " | D2DJobs";
 string ResultsUrl(int targetPage) => string.IsNullOrEmpty(category)
     ? Url.Action("Index", "Home", new { page = targetPage, search, location, experience, qualification, sort, batch }) ?? "/"
@@ -54,7 +55,41 @@ string sortAction = string.IsNullOrEmpty(category)
 @if (popular.Count > 0) { <section class="sidebar-panel"><div class="panel-heading"><h2>Popular opportunities</h2></div>@foreach (var job in popular.Take(3)) { <a class="compact-job" asp-action="Details" asp-route-slug="@job.Slug"><strong>@job.Title</strong><small>@job.CompanyName</small></a> }</section> }
 <section class="sidebar-panel sponsor-invite"><span class="eyebrow">PARTNER WITH US</span><h2>Reach early-career talent</h2><p>Explore advertising placements for your brand or recruitment campaign.</p><a asp-action="Advertise">Explore partnerships &nearr;</a></section><section class="career-note"><span class="eyebrow">A LITTLE REMINDER</span><h2>Your first job is a beginning.</h2><p>Check the requirements, tailor your resume and apply through the official company website.</p><a asp-action="SavedJobs">View your saved jobs &nearr;</a></section>
 </aside></div>
-@if (!filtered && sections.Count > 0) { <section class="category-sections" aria-label="Latest jobs by category">@foreach (var group in sections) { <div class="sidebar-panel"><div class="section-heading"><h2>@group.Key</h2><a asp-route="category" asp-route-categorySlug="@JobCategories.Slug(group.Key)">View all &nearr;</a></div>@foreach (var job in group.Value) { <a class="compact-job" asp-action="Details" asp-route-slug="@job.Slug"><strong>@job.Title</strong><small>@job.CompanyName · @job.Location</small></a> }</div> }</section> }
+@if (!filtered && current == 1 && sort == "latest")
+{
+    <section class="category-learning" aria-labelledby="category-learning-heading">
+        <h2 id="category-learning-heading">Explore jobs and prepare by category</h2>
+        <p class="muted">Choose a category for application advice, interview preparation and professional behaviour.</p>
+        <nav class="category-guide-links" aria-label="Jump to category preparation">
+            @foreach (var name in JobCategories.All)
+            {
+                <a href="#@(CategoryPreparationGuides.For(name)!.Anchor)">@name</a>
+            }
+        </nav>
+        @foreach (var name in JobCategories.All)
+        {
+            <div class="category-learning-group">
+                @if (sections.TryGetValue(name, out var categoryJobs) && categoryJobs.Count > 0)
+                {
+                    <section class="sidebar-panel" aria-label="@name openings">
+                        <div class="section-heading"><h2>@name</h2><a asp-route="category" asp-route-categorySlug="@JobCategories.Slug(name)">View all &nearr;</a></div>
+                        <div class="category-learning-jobs">
+                            @foreach (var job in categoryJobs)
+                            {
+                                <a class="compact-job" asp-action="Details" asp-route-slug="@job.Slug"><strong>@job.Title</strong><small>@job.CompanyName · @job.Location</small></a>
+                            }
+                        </div>
+                    </section>
+                }
+                <partial name="_CategoryPreparationGuide" model="CategoryPreparationGuides.For(name)!" />
+            </div>
+        }
+    </section>
+}
+else if (categoryGuide != null && current == 1 && string.IsNullOrWhiteSpace(search + location + experience + qualification) && !batch.HasValue)
+{
+    <partial name="_CategoryPreparationGuide" model="categoryGuide" />
+}
 
 
 

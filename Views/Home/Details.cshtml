@@ -4,8 +4,9 @@
 @{
 var related = ViewBag.RelatedJobs as List<Job> ?? new();
 bool saved = ViewBag.IsSaved == true;
-bool requiresReview = JobQuality.RequiresReview(Model);
-bool canApply = Uri.TryCreate(Model.ApplyLink, UriKind.Absolute, out var applyUri) && (applyUri.Scheme == "https" || applyUri.Scheme == "http");
+bool requiresReview = ViewBag.RequiresReview == true || JobQuality.RequiresReview(Model);
+bool expired = ViewBag.IsExpired == true;
+bool canApply = !expired && Uri.TryCreate(Model.ApplyLink, UriKind.Absolute, out var applyUri) && (applyUri.Scheme == "https" || applyUri.Scheme == "http");
 string reportSubject = Uri.EscapeDataString("Report job listing: " + Model.Title);
 string reportBody = Uri.EscapeDataString($"Listing: {Context.Request.Scheme}://{Context.Request.Host}/job/{Model.Slug}\n\nIssue (expired, incorrect details, broken link or other):\n\nDetails:");
 // Use the same canonical job URL for sharing and structured data.
@@ -24,8 +25,9 @@ var schemaDescriptionParts = new[]
     $"Skills and requirements: {Model.Skills}",
     $"Eligibility: {Model.Eligibility}",
     $"Selection process: {Model.SelectionProcess}",
+    $"Application instructions: {Model.ApplicationInstructions}",
     Model.WalkInDate.HasValue ? $"Walk-in date: {Model.WalkInDate.Value.ToString("yyyy-MM-dd", System.Globalization.CultureInfo.InvariantCulture)}" : null,
-    $"Application: Review the eligibility and apply through the employer's official recruitment page."
+    $"Documents to prepare: {Model.DocumentsRequired}"
 }.Where(part => !string.IsNullOrWhiteSpace(part))
  .Select(part => System.Net.WebUtility.HtmlEncode(part!.Trim()));
 string schemaDescription = string.Join("<br>", schemaDescriptionParts);
@@ -57,20 +59,42 @@ var schema = new Dictionary<string, object?> {
     ["url"] = pageUrl,
     ["identifier"] = new Dictionary<string, object> { ["@type"] = "PropertyValue", ["name"] = Model.CompanyName, ["value"] = Model.Id.ToString(System.Globalization.CultureInfo.InvariantCulture) },
     ["hiringOrganization"] = new Dictionary<string, object> { ["@type"] = "Organization", ["name"] = Model.CompanyName },
-    ["jobLocation"] = new Dictionary<string, object> { ["@type"] = "Place", ["address"] = new Dictionary<string, object> { ["@type"] = "PostalAddress", ["addressLocality"] = Model.Location, ["addressCountry"] = "IN" } }
+    ["jobLocation"] = new Dictionary<string, object> { ["@type"] = "Place", ["address"] = new Dictionary<string, object> { ["@type"] = "PostalAddress", ["addressLocality"] = Model.Location, ["addressCountry"] = "IN" } },
+    ["educationRequirements"] = Model.Qualification,
+    ["experienceRequirements"] = Model.Experience,
+    ["skills"] = Model.Skills,
+    ["directApply"] = false
 };
 if (Model.ExpiryDate.HasValue) schema["validThrough"] = Model.ExpiryDate.Value.ToString("yyyy-MM-dd");
+bool remote = Model.JobType.Contains("remote", StringComparison.OrdinalIgnoreCase) || Model.Category is "Work From Home Jobs" or "WFH Jobs";
+if (remote)
+{
+    schema["jobLocationType"] = "TELECOMMUTE";
+    schema["applicantLocationRequirements"] = new Dictionary<string, object> { ["@type"] = "Country", ["name"] = "India" };
+}
+var breadcrumbSchema = new Dictionary<string, object>
+{
+    ["@context"] = "https://schema.org",
+    ["@type"] = "BreadcrumbList",
+    ["itemListElement"] = new object[]
+    {
+        new Dictionary<string, object> { ["@type"] = "ListItem", ["position"] = 1, ["name"] = "Jobs", ["item"] = SiteSettings.Value.SiteUrl.TrimEnd('/') + "/" },
+        new Dictionary<string, object> { ["@type"] = "ListItem", ["position"] = 2, ["name"] = Model.Category, ["item"] = SiteSettings.Value.SiteUrl.TrimEnd('/') + (JobCategories.Slug(Model.Category) is string categoryRoute ? "/jobs/" + categoryRoute : "/") },
+        new Dictionary<string, object> { ["@type"] = "ListItem", ["position"] = 3, ["name"] = Model.Title, ["item"] = pageUrl }
+    }
+};
 }
 <nav class="breadcrumbs" aria-label="Breadcrumb"><a href="/">Home</a><span>/</span><a asp-route="category" asp-route-categorySlug="@JobCategories.Slug(Model.Category)">@Model.Category</a><span>/</span><span>@Model.CompanyName</span></nav>
 @if (TempData["Notice"] is string notice) { <div class="notice" role="status">@notice</div> }
 <div class="jobs-layout job-details-layout"><article class="detail-panel">
 <div class="detail-company"><div class="company-avatar">@if (!string.IsNullOrEmpty(Model.CompanyLogo)) { <img src="~/uploads/logos/@Model.CompanyLogo" alt="@Model.CompanyName logo" /> } else { <span>@(string.IsNullOrWhiteSpace(Model.CompanyName) ? "D2D" : Model.CompanyName[..1].ToUpperInvariant())</span> }</div><span>@Model.CompanyName</span>@if (Model.IsFeatured) { <span class="featured-badge">Featured</span> }</div>
 <h1><span aria-hidden="true">&#x1F680;</span> @Model.Title</h1><p class="detail-meta">Posted @Model.PostedDate.ToString("dd MMM yyyy") · @Model.Location</p>
-@if (requiresReview) { <div class="application-note"><strong>Details need verification</strong>Some publishing details have not yet been verified. Check the employer's official source before relying on this listing.</div> }
+@if (expired) { <div class="application-note"><strong>This opening has expired</strong>The closing date has passed. This page is retained only as a reference and is excluded from search indexing, feeds, category pages, and the sitemap.</div> }
+@if (requiresReview) { <div class="application-note"><strong>This listing needs a current editorial check</strong>Some details still need review. Confirm the role, eligibility, deadline and application steps with the employer's official source before applying.</div> }
 <partial name="_JobDeadline" model="Model" />
 <div class="apply-actions">
-@if (!saved) { <form method="post" asp-action="SaveJob" asp-route-id="@Model.Id"><button class="secondary-button" type="submit"><i class="fa-regular fa-bookmark" aria-hidden="true"></i> Save job</button></form> }
-@if (saved) { <a class="secondary-button" asp-action="SavedJobs">Saved to this browser</a> }
+@if (!expired && !saved) { <form method="post" asp-action="SaveJob" asp-route-id="@Model.Id"><button class="secondary-button" type="submit"><i class="fa-regular fa-bookmark" aria-hidden="true"></i> Save job</button></form> }
+@if (saved && !expired) { <a class="secondary-button" asp-action="SavedJobs">Saved to this browser</a> }
 </div>
 <h2 class="summary-heading">At a glance</h2>
 <dl class="job-summary">
@@ -103,9 +127,14 @@ if (Model.ExpiryDate.HasValue) schema["validThrough"] = Model.ExpiryDate.Value.T
 @if(Model.BatchFrom.HasValue && Model.BatchTo.HasValue){<h2>Eligible graduation batches</h2><p>@Model.BatchFrom – @Model.BatchTo</p>}
 @if(!string.IsNullOrWhiteSpace(Model.Eligibility)){<h2>Eligibility</h2><div class="description-text">@Model.Eligibility</div>}
 @if(!string.IsNullOrWhiteSpace(Model.SelectionProcess)){<h2>Selection process</h2><div class="description-text">@Model.SelectionProcess</div>}
+@if(!string.IsNullOrWhiteSpace(Model.EditorialNote)){<h2>D2DJobs editorial guidance</h2><div class="description-text">@Model.EditorialNote</div>}
+@if(!string.IsNullOrWhiteSpace(Model.DocumentsRequired)){<h2>Documents to prepare</h2><div class="description-text">@Model.DocumentsRequired</div>}
 @if(Model.WalkInDate.HasValue || !string.IsNullOrWhiteSpace(Model.WalkInVenue)){<h2>Walk-in details</h2><p>@Model.WalkInDate?.ToString("dd MMM yyyy, hh:mm tt") @(Model.WalkInDate.HasValue ? "IST" : "")</p><div class="description-text">@Model.WalkInVenue</div>}
 @if(Uri.TryCreate(Model.OfficialSourceUrl,UriKind.Absolute,out var sourceUri) && sourceUri.Scheme is "http" or "https"){<p><a href="@sourceUri.AbsoluteUri" target="_blank" rel="noopener noreferrer">Check the official source &nearr;</a></p>}
-@if(Model.LastVerifiedUtc.HasValue){<p class="muted">Last verified: @Model.LastVerifiedUtc.Value.ToString("dd MMM yyyy HH:mm") UTC</p>}<h2 id="how-to-apply">How to apply</h2>@if (canApply) { <p class="muted">Review the eligibility and prepare your resume, then apply through the company's recruitment page.</p> }
+@if(Model.LastVerifiedUtc.HasValue && !requiresReview){<p class="muted"><strong>D2DJobs source-check record.</strong> Checked against the linked official source: @Model.LastVerifiedUtc.Value.ToString("dd MMM yyyy HH:mm") UTC.</p>}
+else if(Model.LastVerifiedUtc.HasValue){<p class="muted">Last source-check date recorded: @Model.LastVerifiedUtc.Value.ToString("dd MMM yyyy HH:mm") UTC. A current editorial check has not been confirmed.</p>}
+<h2 id="how-to-apply">How to apply</h2>@if (canApply) { <div class="description-text">@Model.ApplicationInstructions</div> }
+else if (expired) { <p class="muted">Applications are no longer accepted through this listing.</p> }
 else { <p class="muted">An application link has not been added for this listing. Check the official source above for recruitment updates.</p> }
 <div class="apply-actions">
 @if (canApply) { <a class="primary-button" asp-action="ApplyClick" asp-route-id="@Model.Id" target="_blank" rel="noopener noreferrer">Apply on company website &nearr;</a> }
@@ -115,7 +144,9 @@ else { <span class="application-unavailable">Application link unavailable</span>
 <div class="listing-report"><strong>Something incorrect?</strong><p>Let us know about an expired opening, broken application link or misleading details.</p><a href="mailto:contactsupport21@gmail.com?subject=@reportSubject&amp;body=@reportBody">Report this listing by email</a></div>
 <h2>Share this opportunity</h2><p class="muted">Share a job summary with an Apply here link to this job details page.</p><div class="share-links"><a href="https://wa.me/?text=@shareText" target="_blank" rel="noopener noreferrer">WhatsApp</a><a href="https://t.me/share/url?url=@shareUrl&amp;text=@shareText" target="_blank" rel="noopener noreferrer">Telegram</a><a href="https://www.linkedin.com/sharing/share-offsite/?url=@shareUrl" target="_blank" rel="noopener noreferrer">LinkedIn</a>@if (!string.IsNullOrWhiteSpace(SiteSettings.Value.FacebookUrl)) { <a href="@SiteSettings.Value.FacebookUrl" target="_blank" rel="noopener noreferrer">Facebook</a> }@if (!string.IsNullOrWhiteSpace(SiteSettings.Value.InstagramUrl)) { <a href="@SiteSettings.Value.InstagramUrl" target="_blank" rel="noopener noreferrer">Instagram</a> }@if (!string.IsNullOrWhiteSpace(SiteSettings.Value.LinkedInUrl)) { <a href="@SiteSettings.Value.LinkedInUrl" target="_blank" rel="noopener noreferrer">Our LinkedIn</a> }<button class="secondary-button" type="button" data-copy-link data-copy-text="@sharePlainText">Copy share text</button><span id="copy-status" role="status"></span></div>
 </article><aside class="jobs-sidebar"><section class="sidebar-panel"><div class="panel-heading"><h2>Similar opportunities</h2></div>@if (related.Count == 0) { <p class="muted">Explore all current openings to find your next opportunity.</p> }@foreach (var job in related) { <a class="compact-job" asp-action="Details" asp-route-slug="@job.Slug"><strong>@job.Title</strong><small>@job.CompanyName · @job.Location</small></a> }<a class="details-link" asp-route="category" asp-route-categorySlug="@JobCategories.Slug(Model.Category)">Browse @Model.Category &nearr;</a></section><section class="career-note"><span class="eyebrow">BEFORE YOU APPLY</span><h2>Make your application count.</h2><p>Highlight relevant projects, match your skills to the role and keep your contact details up to date.</p><a asp-action="SavedJobs">Your saved opportunities &nearr;</a></section></aside></div>
-@if (!requiresReview) { <script type="application/ld+json">@Html.Raw(JsonSerializer.Serialize(schema))</script> }
+<script type="application/ld+json">@Html.Raw(JsonSerializer.Serialize(breadcrumbSchema))</script>
+@if (!requiresReview && !expired) { <script type="application/ld+json">@Html.Raw(JsonSerializer.Serialize(schema))</script> }
+<partial name="_CategoryPreparationGuide" model="CategoryPreparationGuides.ForJob(Model)" />
 
 
 

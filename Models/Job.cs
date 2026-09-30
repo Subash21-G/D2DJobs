@@ -10,6 +10,9 @@ namespace JobForFresher.Models
         [StringLength(1000)] public string? OfficialSourceUrl { get; set; }
         [StringLength(5000)] public string? Eligibility { get; set; }
         [StringLength(5000)] public string? SelectionProcess { get; set; }
+        [StringLength(5000)] public string? ApplicationInstructions { get; set; }
+        [StringLength(3000)] public string? DocumentsRequired { get; set; }
+        [StringLength(3000)] public string? EditorialNote { get; set; }
         public DateTime? WalkInDate { get; set; }
         [StringLength(1000)] public string? WalkInVenue { get; set; }
         public DateTime? LastVerifiedUtc { get; set; }
@@ -21,6 +24,8 @@ namespace JobForFresher.Models
                 if (!string.IsNullOrWhiteSpace(field.Item2) && (!Uri.TryCreate(field.Item2, UriKind.Absolute, out var uri) || uri.Scheme is not ("https" or "http") || uri.UserInfo != ""))
                     yield return new("Use a valid HTTP or HTTPS URL.", [field.Item1]);
             if (LastVerifiedUtc > DateTime.UtcNow) yield return new("The verified date cannot be in the future.", [nameof(LastVerifiedUtc)]);
+            if (ExpiryDate.HasValue && AvailableFrom.HasValue && ExpiryDate.Value.Date < AvailableFrom.Value.Date)
+                yield return new("The closing date cannot be earlier than the first publication date.", [nameof(ExpiryDate), nameof(AvailableFrom)]);
         }
         public int Id { get; set; }
 

@@ -1,8 +1,9 @@
 @model string
 @inject Microsoft.Extensions.Options.IOptions<JobForFresher.Models.AdvertisingOptions> AdSettings
+@inject IWebHostEnvironment HostEnvironment
 @{
     var ads = AdSettings.Value;
-    var slot = ads.Slot(Model);
+    var slot = ViewData["ShowAds"] is true && !HostEnvironment.IsDevelopment() ? ads.Slot(Model) : null;
 }
 @if (slot != null)
 {

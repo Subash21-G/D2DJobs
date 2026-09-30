@@ -29,6 +29,7 @@ public class CommerceController(ApplicationDbContext db) : Controller
             c.Job.Description = c.Description; c.Job.ApplyLink = c.ApplyLink; c.Job.Role = c.Title;
             c.Job.AvailableFrom = c.StartDate; c.Job.ExpiryDate = c.EndDate; c.Job.IsActive = true;
             c.Job.IsFeatured = c.UpgradeStatus == "Approved";
+            if (JobQuality.RequiresReview(c.Job)) c.Job.IsActive = false;
             c.ReviewStatus = "Approved";
         }
         else

@@ -1,0 +1,34 @@
+@model JobForFresher.Models.CareerResource
+@using System.Text.Json
+@inject Microsoft.Extensions.Options.IOptions<JobForFresher.Models.SiteOptions> SiteSettings
+@{
+    var pageUrl = SiteSettings.Value.SiteUrl.TrimEnd('/') + "/resources/" + Model.Slug;
+    var articleSchema = new Dictionary<string, object>
+    {
+        ["@context"] = "https://schema.org", ["@type"] = "Article", ["headline"] = Model.Title,
+        ["description"] = Model.Summary, ["datePublished"] = Model.Updated.ToString("yyyy-MM-dd"), ["dateModified"] = Model.Updated.ToString("yyyy-MM-dd"),
+        ["mainEntityOfPage"] = pageUrl,
+        ["author"] = new Dictionary<string, object> { ["@type"] = "Organization", ["name"] = "D2DJobs" },
+        ["publisher"] = new Dictionary<string, object> { ["@type"] = "Organization", ["name"] = "D2DJobs" }
+    };
+    var breadcrumbSchema = new Dictionary<string, object>
+    {
+        ["@context"] = "https://schema.org", ["@type"] = "BreadcrumbList",
+        ["itemListElement"] = new object[]
+        {
+            new Dictionary<string, object> { ["@type"] = "ListItem", ["position"] = 1, ["name"] = "Home", ["item"] = SiteSettings.Value.SiteUrl.TrimEnd('/') + "/" },
+            new Dictionary<string, object> { ["@type"] = "ListItem", ["position"] = 2, ["name"] = "Career resources", ["item"] = SiteSettings.Value.SiteUrl.TrimEnd('/') + "/resources" },
+            new Dictionary<string, object> { ["@type"] = "ListItem", ["position"] = 3, ["name"] = Model.Title, ["item"] = pageUrl }
+        }
+    };
+}
+<nav class="breadcrumbs" aria-label="Breadcrumb"><a href="/">Home</a><span>/</span><a asp-action="Resources">Career resources</a><span>/</span><span>@Model.Title</span></nav>
+<article class="detail-panel resource-article">
+<span class="eyebrow">D2DJOBS CAREER GUIDE</span><h1>@Model.Title</h1><p class="detail-meta">D2DJobs · Updated @Model.Updated.ToString("dd MMMM yyyy")</p>
+<p class="resource-summary">@Model.Summary</p>
+@foreach (var item in Model.Sections) { <section><h2>@item.Heading</h2><p>@item.Body</p></section> }
+<div class="application-note"><strong>Use this guide as a checklist</strong>Always follow the current instructions on the employer’s official careers page or recruitment notification.</div>
+<div class="explore-actions"><a class="primary-button" asp-action="Index">Browse verified jobs</a><a class="secondary-button" asp-action="Resources">More career guides</a></div>
+</article>
+<script type="application/ld+json">@Html.Raw(JsonSerializer.Serialize(articleSchema))</script>
+<script type="application/ld+json">@Html.Raw(JsonSerializer.Serialize(breadcrumbSchema))</script>

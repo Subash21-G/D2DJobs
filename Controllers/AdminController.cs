@@ -68,7 +68,24 @@ public class AdminController(ApplicationDbContext db, IWebHostEnvironment enviro
         if (!string.IsNullOrEmpty(search)) jobs = jobs.Where(j => j.Title.Contains(search) || j.CompanyName.Contains(search) || j.Location.Contains(search) || j.Skills.Contains(search));
         if (!string.IsNullOrEmpty(category)) jobs = jobs.Where(j => j.Category == category);
         jobs = status switch { "Active" => jobs.Where(j => j.IsActive && (j.ExpiryDate == null || j.ExpiryDate >= today)), "Inactive" => jobs.Where(j => !j.IsActive), "Expired" => jobs.Where(j => j.ExpiryDate < today), _ => jobs };
-        if (status == "Needs review") jobs = jobs.Where(j => j.IsActive && (j.ExpiryDate == null || j.ExpiryDate >= today)).Where(JobQuality.NeedsReview);
+        if (status == "Needs review")
+        {
+            var verificationCutoff = JobQuality.VerificationCutoff();
+            var verifiedActive = db.Jobs.AsNoTracking()
+                .Where(j => j.IsActive && (j.AvailableFrom == null || j.AvailableFrom <= today) && (j.ExpiryDate == null || j.ExpiryDate >= today))
+                .Where(JobQuality.ReadyForIndex(verificationCutoff));
+            var duplicateIds = db.Jobs.AsNoTracking()
+                .Where(j => j.IsActive && (j.ExpiryDate == null || j.ExpiryDate >= today))
+                .Where(j => verifiedActive.Any(other => other.Id != j.Id &&
+                    (other.ApplicationInstructions!.Trim() == j.ApplicationInstructions!.Trim() ||
+                     other.EditorialNote!.Trim() == j.EditorialNote!.Trim())))
+                .Select(j => j.Id);
+            var needsReviewIds = db.Jobs.AsNoTracking()
+                .Where(j => j.IsActive && (j.ExpiryDate == null || j.ExpiryDate >= today))
+                .Where(JobQuality.NeedsReview(verificationCutoff))
+                .Select(j => j.Id);
+            jobs = jobs.Where(j => needsReviewIds.Contains(j.Id) || duplicateIds.Contains(j.Id));
+        }
         recentDays = recentDays is 7 or 30 or 90 ? recentDays : 0;
         dateOrder = dateOrder == "oldest" ? "oldest" : "newest";
         addedFrom = addedFrom?.Date;
@@ -121,14 +138,39 @@ public class AdminController(ApplicationDbContext db, IWebHostEnvironment enviro
                 return View(input);
             }
 
+            var today = DateTime.Today;
+            var existingGuidance = await db.Jobs.AsNoTracking()
+                .Where(job => job.IsActive && (job.AvailableFrom == null || job.AvailableFrom <= today) && (job.ExpiryDate == null || job.ExpiryDate >= today))
+                .Where(JobQuality.ReadyForIndex(JobQuality.VerificationCutoff()))
+                .Select(job => new { job.ApplicationInstructions, job.EditorialNote })
+                .ToListAsync(cancellationToken);
+            var applicationText = existingGuidance.Select(x => NormalizeGuidance(x.ApplicationInstructions)).Where(x => x.Length > 0).ToHashSet(StringComparer.OrdinalIgnoreCase);
+            var editorialText = existingGuidance.Select(x => NormalizeGuidance(x.EditorialNote)).Where(x => x.Length > 0).ToHashSet(StringComparer.OrdinalIgnoreCase);
+            var heldDrafts = 0;
             foreach (var job in jobs)
             {
                 job.Slug = Slug(job.Title);
                 job.PostedDate = DateTime.Now;
+                var issues = JobQuality.ReviewIssues(job);
+                var application = NormalizeGuidance(job.ApplicationInstructions);
+                var editorial = NormalizeGuidance(job.EditorialNote);
+                var repeatedGuidance = job.IsActive && (applicationText.Contains(application) || editorialText.Contains(editorial));
+                if (issues.Count > 0 || repeatedGuidance)
+                {
+                    job.IsActive = false;
+                    heldDrafts++;
+                }
+                else if (job.IsActive)
+                {
+                    applicationText.Add(application);
+                    editorialText.Add(editorial);
+                }
             }
             await db.Jobs.AddRangeAsync(jobs, cancellationToken);
             await db.SaveChangesAsync(cancellationToken);
-            TempData["Notice"] = $"{jobs.Count} job(s) imported successfully.";
+            TempData["Notice"] = heldDrafts == 0
+                ? $"{jobs.Count} job(s) imported successfully."
+                : $"{jobs.Count} job(s) imported; {heldDrafts} saved inactive because they need publishing details, fresh verification, or unique editorial guidance.";
             return RedirectToAction(nameof(Index));
         }
         catch (InvalidDataException)
@@ -150,7 +192,7 @@ public class AdminController(ApplicationDbContext db, IWebHostEnvironment enviro
         var logo = await SaveLogo(logoFile);
         if (!ModelState.IsValid) return View(input);
         var job = new Job(); CopyFields(input, job); job.CompanyLogo = logo;
-        job.Slug = Slug(job.Title); job.PostedDate = DateTime.Now; db.Jobs.Add(job); await db.SaveChangesAsync();
+        job.Slug = Slug(job.Title); job.PostedDate = DateTime.Now; await ApplyPublishingGate(job); db.Jobs.Add(job); await db.SaveChangesAsync();
         return RedirectToAction(nameof(Index));
     }
     public async Task<IActionResult> Edit(int id)
@@ -166,7 +208,7 @@ public class AdminController(ApplicationDbContext db, IWebHostEnvironment enviro
         if (!ModelState.IsValid) return View(input);
         var logo = await SaveLogo(logoFile); if (!ModelState.IsValid) return View(input);
         var previousLogo = job.CompanyLogo; CopyFields(input, job); if (logo != null) job.CompanyLogo = logo;
-        job.Slug ??= Slug(job.Title); await db.SaveChangesAsync(); if (logo != null) DeleteLogo(previousLogo);
+        job.Slug ??= Slug(job.Title); await ApplyPublishingGate(job); await db.SaveChangesAsync(); if (logo != null) DeleteLogo(previousLogo);
         return RedirectToAction(nameof(Index));
     }
     [HttpPost, ValidateAntiForgeryToken]
@@ -174,6 +216,31 @@ public class AdminController(ApplicationDbContext db, IWebHostEnvironment enviro
     {
         var job = await db.Jobs.FindAsync(id);
         if (job != null) { db.Jobs.Remove(job); await db.SaveChangesAsync(); DeleteLogo(job.CompanyLogo); }
+        return RedirectToAction(nameof(Index));
+    }
+    [HttpPost, ValidateAntiForgeryToken, RequestSizeLimit(16 * 1024), RequestFormLimits(ValueCountLimit = 32)]
+    public async Task<IActionResult> DeleteSelected(int[]? jobIds, CancellationToken cancellationToken)
+    {
+        if (jobIds == null || jobIds.Length == 0)
+        {
+            TempData["Notice"] = "Select at least one job to delete.";
+            return RedirectToAction(nameof(Index));
+        }
+        // The overview displays at most 20 rows per page. Keep this action page-scoped.
+        if (jobIds.Length > 20 || jobIds.Any(id => id <= 0))
+            return BadRequest("Select up to 20 valid jobs from one overview page.");
+
+        var ids = jobIds.Distinct().ToArray();
+        var jobs = await db.Jobs.Where(job => ids.Contains(job.Id)).ToListAsync(cancellationToken);
+        if (jobs.Count == 0)
+        {
+            TempData["Notice"] = "No selected jobs were found. Refresh the overview and try again.";
+            return RedirectToAction(nameof(Index));
+        }
+        db.Jobs.RemoveRange(jobs);
+        await db.SaveChangesAsync(cancellationToken);
+        foreach (var job in jobs) DeleteLogo(job.CompanyLogo);
+        TempData["Notice"] = $"Deleted {jobs.Count} selected job(s).";
         return RedirectToAction(nameof(Index));
     }
     private static string Slug(string title) => System.Text.RegularExpressions.Regex.Replace(title.ToLowerInvariant(), "[^a-z0-9]+", "-").Trim('-') + "-" + Guid.NewGuid().ToString("N")[..10];
@@ -184,8 +251,29 @@ public class AdminController(ApplicationDbContext db, IWebHostEnvironment enviro
         b.JobType = a.JobType ?? ""; b.Qualification = a.Qualification ?? ""; b.Skills = a.Skills ?? ""; b.Description = a.Description ?? "";
         b.ApplyLink = a.ApplyLink ?? ""; b.IsFeatured = a.IsFeatured; b.ExpiryDate = a.ExpiryDate; b.IsActive = a.IsActive;
         b.BatchFrom = a.BatchFrom; b.BatchTo = a.BatchTo; b.Eligibility = a.Eligibility; b.SelectionProcess = a.SelectionProcess;
+        b.ApplicationInstructions = a.ApplicationInstructions; b.DocumentsRequired = a.DocumentsRequired; b.EditorialNote = a.EditorialNote;
         b.WalkInDate = a.WalkInDate; b.WalkInVenue = a.WalkInVenue; b.OfficialSourceUrl = a.OfficialSourceUrl; b.LastVerifiedUtc = a.LastVerifiedUtc;
     }
+    private async Task ApplyPublishingGate(Job job)
+    {
+        if (!job.IsActive) return;
+        var issues = JobQuality.ReviewIssues(job).ToList();
+        if (issues.Count == 0)
+        {
+            var application = NormalizeGuidance(job.ApplicationInstructions);
+            var editorial = NormalizeGuidance(job.EditorialNote);
+            var cutoff = JobQuality.VerificationCutoff();
+            var duplicate = await db.Jobs.AsNoTracking().Where(JobQuality.ReadyForIndex(cutoff)).AnyAsync(other => other.Id != job.Id && other.IsActive &&
+                (other.AvailableFrom == null || other.AvailableFrom <= DateTime.Today) && (other.ExpiryDate == null || other.ExpiryDate >= DateTime.Today) &&
+                ((other.ApplicationInstructions != null && other.ApplicationInstructions.Trim() == application) ||
+                 (other.EditorialNote != null && other.EditorialNote.Trim() == editorial)));
+            if (duplicate) issues.Add("unique, job-specific application and editorial guidance");
+        }
+        if (issues.Count == 0) return;
+        job.IsActive = false;
+        TempData["Notice"] = "Saved as an inactive draft. Before publishing, add: " + string.Join(", ", issues) + ".";
+    }
+    private static string NormalizeGuidance(string? value) => value?.Trim() ?? "";
     private async Task<string?> SaveLogo(IFormFile? file)
     {
         if (file == null || file.Length == 0) return null;

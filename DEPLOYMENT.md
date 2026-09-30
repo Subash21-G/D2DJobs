@@ -15,7 +15,7 @@ Run `powershell -File scripts/Prepare-Release.ps1` from this repository with the
 
 ## Verify
 - Admin > Launch readiness checks the current database migrations, configuration and incomplete active listings.
-- Admin > Needs review finds active listings missing title, company, role, location, qualification, skills, description, selection process, application link, official source, eligibility or last verification date. Supply factual values; batch ranges and selection details must come from the employer.
+- Admin > Needs review finds active listings with thin required fields, missing or repeated job-specific guidance, missing official links, or a source check older than 45 days. Add factual values and fresh checks against the employer's source; batch ranges and selection details must come from the employer.
 - Check login/logout, job creation/editing, two populated listing pages, batch/category filters, saved jobs, job detail and application redirects. Use an isolated database for test listings.
 - Check mobile widths 320, 390, 768 and 1440 pixels, RSS, sitemap and canonical URLs. Submit `https://d2djobs.in/sitemap.xml` in Google Search Console after the live HTTPS check.
 - Verify /App_Data/site-settings.json returns no file content through the public host/CDN. IIS hidden segments and application middleware block private application data.
@@ -25,10 +25,12 @@ Run `powershell -File scripts/Prepare-Release.ps1` from this repository with the
 ## AdSense review gate
 Do not request review until every item below is true on the public domain, not only in a local build.
 
+Use [the content remediation audit](ADSENSE-REMEDIATION.md) to prepare the job inventory first. Existing rows have empty new editorial fields and will be excluded from discovery until updated; deploying stricter checks alone does not resolve low-value content.
+
 1. Deploy the current application and database migration together. Confirm `/resume-builder`, `/employer/register`, and `/editorial-policy` return successful pages from the main navigation.
 2. Confirm the old ad-blocker dialog is absent on the home, legal, and job-detail pages.
 3. Confirm `/ads.txt` contains the intended `pub-` account and the home page source contains the matching `google-adsense-account` meta tag. A publisher ID verifies ownership; it does not mean the site is approved.
-4. In Admin > Launch readiness, resolve every active listing under **Needs review**. Manually verify factual accuracy and originality; field-presence checks cannot detect copied or misleading text.
+4. In Admin > Launch readiness, resolve every active listing under **Needs review**. Manually verify factual accuracy and originality; automated completeness and duplicate-text checks cannot detect all copied or misleading content.
 5. Keep Monetag and AdSense ad placements disabled during review. In AdSense, configure Google's Privacy & messaging CMP or another Google-certified CMP, then test the live consent journey where it is required. Only then confirm the consent setting in this application.
 6. Check the privacy policy, terms, disclaimer, editorial policy, About, Contact, and all primary navigation links on mobile and desktop. Confirm expired jobs and broken application links are removed or corrected.
 7. Add `d2djobs.in` in AdSense, verify ownership, and request review. Do not select **Site approved** or enable ad slots until AdSense reports the site as **Ready**.
@@ -41,5 +43,7 @@ Keep the application stopped. Restore SQL into an isolated database; extract the
 Email subscriptions, automatic channel posting, automatic AdSense synchronization, password recovery and two-factor authentication are optional future features. Existing RSS, channel links and manual ad reporting remain available.
 
 ## Repeat local checks
+For content publishing and ad suppression checks, run `powershell -NoProfile -File tests/Run-BrowserChecks.ps1 -PlaywrightModules .mobile-check/node_modules -TestScript tests/content-quality.cjs -VerifyAdGating`. This uses fake ad settings in an isolated production-mode test server and blocks all external browser requests. It does not enable production ads.
+
 Run the browser regression script for isolated application checks; file backups are covered by the deployment backup procedure.
 Run `powershell -NoProfile -File tests/Run-BrowserChecks.ps1 -PlaywrightModules .mobile-check/node_modules` with SQL Server LocalDB, the development HTTPS certificate, Node, Playwright and Edge available. The runner creates a new LocalDB database, random temporary admin credentials and a separate content root; it stops the test server afterward. It does not reuse the normal application database or modify site settings. Test databases and artifacts are retained for inspection. The PlaywrightModules argument may point to another existing installation; no dependency download is performed by this runner.

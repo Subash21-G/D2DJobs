@@ -1,0 +1,17 @@
+@model JobForFresher.Models.CategoryPreparationGuide
+<section class="career-guide category-preparation" id="@Model.Anchor" aria-labelledby="@(Model.Anchor)-heading" data-category="@Model.Category">
+    <span class="eyebrow">@Model.Category · APPLICATION &amp; INTERVIEW GUIDE</span>
+    <h2 id="@(Model.Anchor)-heading">@Model.Heading</h2>
+    <p class="detail-meta">D2DJobs · Updated @Model.Updated.ToString("dd MMMM yyyy")</p>
+    <p class="category-preparation-intro">@Model.Introduction</p>
+    <p class="category-preparation-context">General preparation advice. Check the employer's notice for this opening's requirements and selection stages.</p>
+    <div class="category-preparation-sections">
+        @foreach (var item in Model.Sections)
+        {
+            <section>
+                <h3>@item.Heading</h3>
+                <p>@item.Body</p>
+            </section>
+        }
+    </div>
+</section>

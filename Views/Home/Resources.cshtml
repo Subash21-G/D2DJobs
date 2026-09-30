@@ -1,0 +1,9 @@
+@model IReadOnlyList<JobForFresher.Models.CareerResource>
+<nav class="breadcrumbs" aria-label="Breadcrumb"><a href="/">Home</a><span>/</span><span>Career resources</span></nav>
+<section class="discovery-intro"><div><span class="eyebrow">PRACTICAL, ORIGINAL GUIDES</span><h1>Build a stronger <span>first-career toolkit.</span></h1><p>Clear, independent guidance for choosing openings, preparing applications, and applying safely.</p></div></section>
+<section class="category-sections resources-grid" aria-label="Career guides">
+@foreach (var article in Model)
+{
+    <article class="sidebar-panel"><span class="eyebrow">CAREER GUIDE</span><h2><a asp-route="career-resource" asp-route-slug="@article.Slug">@article.Title</a></h2><p>@article.Summary</p><a class="details-link" asp-route="career-resource" asp-route-slug="@article.Slug">Read the guide &nearr;</a></article>
+}
+</section>
