@@ -41,6 +41,19 @@ public class HomeController : Controller
         _ => query.Where(j => j.Category == category)
     };
 
+    private static IQueryable<Job> ApplyDiscoveryFilters(IQueryable<Job> query, string? search, string? category,
+        string? location, string? experience, string? qualification, int? batch)
+    {
+        if (!string.IsNullOrWhiteSpace(search))
+            query = query.Where(j => EF.Functions.Like(j.Title, $"%{search}%") || EF.Functions.Like(j.CompanyName, $"%{search}%") || EF.Functions.Like(j.Location, $"%{search}%") || EF.Functions.Like(j.Skills, $"%{search}%"));
+        if (!string.IsNullOrWhiteSpace(category)) query = CategoryJobs(query, category);
+        if (!string.IsNullOrWhiteSpace(location)) query = query.Where(j => EF.Functions.Like(j.Location, $"%{location}%"));
+        if (!string.IsNullOrWhiteSpace(experience)) query = query.Where(j => EF.Functions.Like(j.Experience, $"%{experience}%"));
+        if (!string.IsNullOrWhiteSpace(qualification)) query = query.Where(j => j.Qualification.Contains(qualification));
+        if (batch.HasValue) query = query.Where(j => j.BatchFrom <= batch.Value && j.BatchTo >= batch.Value);
+        return query;
+    }
+
     public async Task<IActionResult> Index(string? search, string? category, string? location, string? experience, string? qualification, int page = 1, string sort = "latest", int? batch = null)
     {
         const int pageSize = 12;
@@ -70,16 +83,13 @@ public class HomeController : Controller
             _ => "Browse current fresher jobs, off-campus drives and internships in India. Filter openings by graduation batch, qualification and location."
         };
         ViewData["Canonical"] = Origin + (categorySlug == null ? "/" : "/jobs/" + categorySlug);
-        var available = DiscoverableJobs();
-        var jobs = available;
-        if (!string.IsNullOrWhiteSpace(search))
-            jobs = jobs.Where(j => EF.Functions.Like(j.Title, $"%{search}%") || EF.Functions.Like(j.CompanyName, $"%{search}%") || EF.Functions.Like(j.Location, $"%{search}%") || EF.Functions.Like(j.Skills, $"%{search}%"));
-        if (!string.IsNullOrWhiteSpace(category)) jobs = CategoryJobs(jobs, category);
-        if (!string.IsNullOrWhiteSpace(location)) jobs = jobs.Where(j => EF.Functions.Like(j.Location, $"%{location}%"));
-        if (!string.IsNullOrWhiteSpace(experience)) jobs = jobs.Where(j => EF.Functions.Like(j.Experience, $"%{experience}%"));
-        if (!string.IsNullOrWhiteSpace(qualification)) jobs = jobs.Where(j => j.Qualification.Contains(qualification));
-        if (batch.HasValue) jobs = jobs.Where(j => j.BatchFrom <= batch.Value && j.BatchTo >= batch.Value);
+        // Let visitors see every currently active, in-date listing. Keep the stricter
+        // editorial gate separately for search indexing, rich results and advertising.
+        var available = AvailableJobs();
+        var jobs = ApplyDiscoveryFilters(available, search, category, location, experience, qualification, batch);
+        var publishableJobs = ApplyDiscoveryFilters(DiscoverableJobs(), search, category, location, experience, qualification, batch);
         var total = await jobs.CountAsync();
+        var publishableTotal = await publishableJobs.CountAsync();
         var pages = (int)Math.Ceiling(total / (double)pageSize);
         page = Math.Clamp(page, 1, Math.Max(1, pages));
         sort = sort is "popular" or "closing" ? sort : "latest";
@@ -91,9 +101,11 @@ public class HomeController : Controller
         };
         var result = await ordered.Skip((page - 1) * pageSize).Take(pageSize).ToListAsync();
         ViewBag.CurrentPage = page; ViewBag.TotalPages = pages; ViewBag.ResultCount = total;
-        var hasPublishingQualityContent = result.Count > 0;
-        ViewData["ShowAds"] = hasPublishingQualityContent;
-        ViewData["NoIndex"] = total == 0 || !hasPublishingQualityContent;
+        var resultIds = result.Select(job => job.Id).ToArray();
+        var publishableOnPage = resultIds.Length == 0 ? 0 : await publishableJobs.CountAsync(job => resultIds.Contains(job.Id));
+        var allResultsPublishable = result.Count > 0 && publishableOnPage == result.Count;
+        ViewData["ShowAds"] = allResultsPublishable;
+        ViewData["NoIndex"] = total == 0 || publishableTotal != total;
         ViewBag.Search = search; ViewBag.Category = category; ViewBag.Location = location; ViewBag.Experience = experience; ViewBag.Sort = sort;
         ViewBag.Qualification = qualification;
         var totals = await available.GroupBy(j => 1).Select(g => new {

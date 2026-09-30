@@ -116,14 +116,18 @@ const nodePath = require('node:path');
     check(/25 Sep(?:t)? 2026/.test(importedDateTest.html), 'Import keeps the source PostedDate: ' + importedDateLabels.join(' | '));
     check(importedDateTest.html.includes('"datePosted":"2026-09-25"'), 'Imported source PostedDate is used for JobPosting datePosted');
     const home = await get('/');
-    check(hasAd(home.html), 'Populated listing page renders fake ad configuration');
+    check(['Original', 'Duplicate', 'Thin', 'Stale'].every(title => home.html.includes(path(title))), 'Active legacy jobs remain visible on the homepage');
+    check(!hasAd(home.html), 'Homepage containing unreviewed listings stays ad-free');
+    check(home.html.includes('content="noindex, follow"'), 'Homepage stays noindex while any displayed active listing needs review');
     const sitemap = (await get('/sitemap.xml')).html;
     const feed = (await get('/jobs/feed.xml')).html;
     for (const title of [...excluded, 'Scheduled']) {
-      check(!home.html.includes(path(title)), title + ' excluded from discovery');
       check(!sitemap.includes(path(title)), title + ' excluded from sitemap');
       check(!feed.includes(path(title)), title + ' excluded from RSS');
     }
+    check(!home.html.includes(path('Expired')) && !home.html.includes(path('Scheduled')), 'Expired and future listings stay out of the homepage');
+    for (const title of ['Original', 'Duplicate', 'Thin', 'Stale'])
+      check(!sitemap.includes(path(title)) && !feed.includes(path(title)), title + ' remains out of SEO discovery until reviewed');
     check(sitemap.includes(path('Second')) && feed.includes(path('Second')) && sitemap.includes(path('Imported Date Test')) && feed.includes(path('Imported Date Test')), 'Eligible listings in sitemap and RSS');
     const importedUnsupportedPath = '/job/' + rows.find(row => row.title === 'QUALITY Imported Unsupported').slug;
     check(!home.html.includes(importedUnsupportedPath) && !sitemap.includes(importedUnsupportedPath) && !feed.includes(importedUnsupportedPath), 'Unsupported imported category stays out of public discovery');
