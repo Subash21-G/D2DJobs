@@ -12,8 +12,6 @@ if (builder.Environment.IsDevelopment()) builder.Configuration.AddJsonFile("apps
 builder.Configuration.AddJsonFile("App_Data/site-settings.json", optional: true, reloadOnChange: true).AddEnvironmentVariables();
 builder.Services.AddControllersWithViews(options => options.SuppressImplicitRequiredAttributeForNonNullableReferenceTypes = true);
 builder.Services.Configure<AdvertisingOptions>(builder.Configuration.GetSection("Advertising"));
-builder.Services.Configure<MonetagOptions>(builder.Configuration.GetSection("Monetag"));
-
 builder.Services.Configure<SiteOptions>(builder.Configuration.GetSection("SiteSettings"));
 builder.Services.AddScoped<ExcelJobImporter>();
 builder.Services.AddDbContext<ApplicationDbContext>(options => options.UseSqlServer(builder.Configuration.GetConnectionString("DefaultConnection")));
