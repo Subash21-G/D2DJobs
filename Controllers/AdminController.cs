@@ -158,40 +158,16 @@ public class AdminController(ApplicationDbContext db, IWebHostEnvironment enviro
                 return View(input);
             }
 
-            var today = DateTime.Today;
-            var existingGuidance = await db.Jobs.AsNoTracking()
-                .Where(job => job.IsActive && (job.AvailableFrom == null || job.AvailableFrom <= today) && (job.ExpiryDate == null || job.ExpiryDate >= today))
-                .Where(JobQuality.ReadyForIndex(JobQuality.VerificationCutoff()))
-                .Select(job => new { job.ApplicationInstructions, job.EditorialNote })
-                .ToListAsync(cancellationToken);
-            var applicationText = existingGuidance.Select(x => NormalizeGuidance(x.ApplicationInstructions)).Where(x => x.Length > 0).ToHashSet(StringComparer.OrdinalIgnoreCase);
-            var editorialText = existingGuidance.Select(x => NormalizeGuidance(x.EditorialNote)).Where(x => x.Length > 0).ToHashSet(StringComparer.OrdinalIgnoreCase);
-            var heldDrafts = 0;
             foreach (var job in jobs)
             {
                 job.Slug = Slug(job.Title);
                 job.PostedDate = DateTime.Now;
                 job.ImportedUtc = DateTime.UtcNow;
-                var issues = JobQuality.ReviewIssues(job);
-                var application = NormalizeGuidance(job.ApplicationInstructions);
-                var editorial = NormalizeGuidance(job.EditorialNote);
-                var repeatedGuidance = job.IsActive && (applicationText.Contains(application) || editorialText.Contains(editorial));
-                if (issues.Count > 0 || repeatedGuidance)
-                {
-                    job.IsActive = false;
-                    heldDrafts++;
-                }
-                else if (job.IsActive)
-                {
-                    applicationText.Add(application);
-                    editorialText.Add(editorial);
-                }
+                job.IsActive = true;
             }
             await db.Jobs.AddRangeAsync(jobs, cancellationToken);
             await db.SaveChangesAsync(cancellationToken);
-            TempData["Notice"] = heldDrafts == 0
-                ? $"{jobs.Count} job(s) imported successfully."
-                : $"{jobs.Count} job(s) imported; {heldDrafts} saved inactive because they need publishing details, fresh verification, or unique editorial guidance.";
+            TempData["Notice"] = $"{jobs.Count} job(s) imported and activated. Current, non-expired jobs are now available on the homepage.";
             return RedirectToAction(nameof(Index));
         }
         catch (InvalidDataException)

@@ -78,7 +78,7 @@ const nodePath = require('node:path');
     await page.goto(base + '/Admin?search=QUALITY%20Imported%20Unsupported');
     const importedUnsupportedEdit = await page.locator('a[href^="/Admin/Edit/"]').first().getAttribute('href');
     await page.goto(base + importedUnsupportedEdit);
-    check(!await page.locator('[name="IsActive"][type="checkbox"]').isChecked(), 'Unsupported Excel category is retained as an inactive draft');
+    check(await page.locator('[name="IsActive"][type="checkbox"]').isChecked(), 'Every valid Excel row is activated automatically');
     const rows = JSON.parse(execFileSync('powershell.exe', ['-NoProfile', '-File', 'tests/Set-QualityFixtures.ps1'], { encoding: 'utf8' }));
     const path = title => '/job/' + rows.find(row => row.title === 'QUALITY ' + title).slug;
     const get = async url => {
@@ -130,12 +130,12 @@ const nodePath = require('node:path');
       check(!sitemap.includes(path(title)) && !feed.includes(path(title)), title + ' remains out of SEO discovery until reviewed');
     check(sitemap.includes(path('Second')) && feed.includes(path('Second')) && sitemap.includes(path('Imported Date Test')) && feed.includes(path('Imported Date Test')), 'Eligible listings in sitemap and RSS');
     const importedUnsupportedPath = '/job/' + rows.find(row => row.title === 'QUALITY Imported Unsupported').slug;
-    check(!home.html.includes(importedUnsupportedPath) && !sitemap.includes(importedUnsupportedPath) && !feed.includes(importedUnsupportedPath), 'Unsupported imported category stays out of public discovery');
+    check(home.html.includes(importedUnsupportedPath) && !sitemap.includes(importedUnsupportedPath) && !feed.includes(importedUnsupportedPath), 'Imported job is visible to viewers while incomplete metadata stays out of SEO feeds');
     for (const url of ['/?search=absent-quality-fixture', '/Home/About', '/resources', '/definitely-missing']) {
       check(!hasAd((await get(url)).html), 'No ads on ' + url);
     }
     const readiness = (await get('/Readiness')).html;
-    check(readiness.includes('9 active listing(s); 4 need substantial publishing details or fresh verification.'), 'Readiness counts match discoverable candidates');
+    check(readiness.includes('10 active listing(s); 5 need substantial publishing details or fresh verification.'), 'Readiness counts match active listings');
     await page.goto(base + '/Admin?status=Needs%20review');
     check(await page.locator('.admin-job-table tbody tr').count() === 9, 'Review queue includes legacy and newly held quality cases');
     const reviewReasons = (await page.locator('.review-reasons').allInnerTexts()).join(' | ');
