@@ -25,13 +25,7 @@ public class HomeController : Controller
     }
     private IQueryable<Job> AvailableJobs() => _context.Jobs.AsNoTracking()
         .Where(j => j.IsActive && (j.AvailableFrom == null || j.AvailableFrom <= DateTime.Today) && (j.ExpiryDate == null || j.ExpiryDate >= DateTime.Today));
-    private IQueryable<Job> DiscoverableJobs()
-    {
-        var verified = AvailableJobs().Where(JobQuality.ReadyForIndex(JobQuality.VerificationCutoff()));
-        return verified.Where(job => !verified.Any(other => other.Id != job.Id &&
-            (other.ApplicationInstructions!.Trim() == job.ApplicationInstructions!.Trim() ||
-             other.EditorialNote!.Trim() == job.EditorialNote!.Trim())));
-    }
+    private IQueryable<Job> DiscoverableJobs() => AvailableJobs();
     private static IQueryable<Job> CategoryJobs(IQueryable<Job> query, string category) => category switch
     {
         "Off Campus" => query.Where(j => j.Category == "Off Campus" || j.SubCategory == "Off Campus Drive"),
@@ -197,12 +191,8 @@ public class HomeController : Controller
             job.ViewsCount++;
         }
         ViewData["Canonical"] = Origin + Url.RouteUrl("job-details", new { slug = job.Slug });
-        // Direct URLs must use the same duplicate-content gate as discovery and feeds.
-        var requiresReview = JobQuality.RequiresReview(job) ||
-            (!expired && !await DiscoverableJobs().AnyAsync(j => j.Id == job.Id));
-        ViewBag.RequiresReview = requiresReview;
-        ViewData["NoIndex"] = expired || requiresReview;
-        ViewData["ShowAds"] = !expired && !requiresReview;
+        ViewData["NoIndex"] = expired;
+        ViewData["ShowAds"] = !expired;
         ViewBag.IsExpired = expired;
         ViewBag.RelatedJobs = await DiscoverableJobs().Where(j => j.Category == job.Category && j.Id != job.Id).OrderByDescending(j => j.PostedDate).Take(4).ToListAsync();
         ViewBag.IsSaved = ReadSavedIds().Contains(job.Id);

@@ -135,7 +135,7 @@ const nodePath = require('node:path');
       check(!hasAd((await get(url)).html), 'No ads on ' + url);
     }
     const readiness = (await get('/Readiness')).html;
-    check(readiness.includes('10 active listing(s); 5 need substantial publishing details or fresh verification.'), 'Readiness counts match active listings');
+    check(readiness.includes('10 active listing(s); 5 need substantial publishing details.'), 'Readiness counts match active listings');
     await page.goto(base + '/Admin?status=Needs%20review');
     check(await page.locator('.admin-job-table tbody tr').count() === 9, 'Review queue includes legacy and newly held quality cases');
     const reviewReasons = (await page.locator('.review-reasons').allInnerTexts()).join(' | ');

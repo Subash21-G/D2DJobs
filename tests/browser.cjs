@@ -33,7 +33,7 @@ response=await context.request.get(base+'/jobs/unknown');check(response.status()
 response=await context.request.get(base+'/App_Data/site-settings.json');check(response.status()===404,'Private settings blocked');
 const anon=await browser.newContext({ignoreHTTPSErrors:true});for(const path of ['/Admin','/Analytics','/Settings','/Readiness',]){response=await anon.request.get(base+path,{maxRedirects:0});check(response.status()===302&&response.headers().location.includes('/Admin/Login'),'Protected '+path);}
 await visit('/Readiness');check((await page.locator('body').innerText()).includes('All migrations in this application are applied.'),'Readiness migrations');
-check((await page.locator('body').innerText()).includes('24 active listing(s); 0 need substantial publishing details or fresh verification.'),'Readiness content count');
+check((await page.locator('body').innerText()).includes('24 active listing(s); 0 need substantial publishing details.'),'Readiness content count');
 await visit('/Admin?status=Needs%20review');check(await page.locator('.admin-job-table tbody tr').count()===0,'No test job needs review');
 const publicPage=await anon.newPage();await publicPage.goto(base+details);
 await publicPage.locator('form[action*="SaveJob"] button').click();

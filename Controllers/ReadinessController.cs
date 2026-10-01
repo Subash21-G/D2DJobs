@@ -38,7 +38,7 @@ try
                     (other.ApplicationInstructions!.Trim() == j.ApplicationInstructions!.Trim() ||
                      other.EditorialNote!.Trim() == j.EditorialNote!.Trim()))).CountAsync(cancellationToken);
                 incomplete += duplicateGuidance;
-        report.Checks.Add(new("Active job content", total == 0 || incomplete > 0 ? "Action needed" : "Ready", $"{total} active listing(s); {incomplete} need substantial publishing details or fresh verification. Use the Needs review filter. Automated checks cannot establish factual accuracy."));
+        report.Checks.Add(new("Active job content", total == 0 || incomplete > 0 ? "Action needed" : "Ready", $"{total} active listing(s); {incomplete} need substantial publishing details. Use the Needs review filter. Automated checks cannot establish factual accuracy."));
                 report.Checks.Add(new("Source posting dates", "Manual review required", "Record SourcePostedDate only when the linked source shows a posting date. Leave it blank when the source does not provide one; the import timestamp is tracked separately and is never used as the employer posting date."));
             }
         }

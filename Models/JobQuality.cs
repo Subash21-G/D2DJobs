@@ -37,7 +37,6 @@ public static class JobQuality
         ((j.ApplyLink.StartsWith("https://") && j.ApplyLink.Length > 8) || (j.ApplyLink.StartsWith("http://") && j.ApplyLink.Length > 7)) && !j.ApplyLink.Contains(" ") &&
         j.OfficialSourceUrl != null && ((j.OfficialSourceUrl.StartsWith("https://") && j.OfficialSourceUrl.Length > 8) || (j.OfficialSourceUrl.StartsWith("http://") && j.OfficialSourceUrl.Length > 7)) && !j.OfficialSourceUrl.Contains(" ") &&
         j.Eligibility != null && j.Eligibility.Trim().Length >= MinimumEligibilityLength &&
-        j.LastVerifiedUtc != null && j.LastVerifiedUtc >= verifiedAfterUtc &&
         JobCategories.All.Contains(j.Category) && JobSourceTypes.All.Contains(j.SourceType ?? "") &&
         !j.ApplyLink.Contains("@") && j.OfficialSourceUrl != null && !j.OfficialSourceUrl.Contains("@") &&
         !(j.WalkInStartDate.HasValue && j.WalkInEndDate.HasValue && j.WalkInEndDate < j.WalkInStartDate) &&
@@ -79,7 +78,6 @@ public static class JobQuality
         ((!j.ApplyLink.StartsWith("https://") || j.ApplyLink.Length <= 8) && (!j.ApplyLink.StartsWith("http://") || j.ApplyLink.Length <= 7)) || j.ApplyLink.Contains(" ") ||
         j.OfficialSourceUrl == null || ((!j.OfficialSourceUrl.StartsWith("https://") || j.OfficialSourceUrl.Length <= 8) && (!j.OfficialSourceUrl.StartsWith("http://") || j.OfficialSourceUrl.Length <= 7)) || j.OfficialSourceUrl.Contains(" ") ||
         j.Eligibility == null || j.Eligibility.Trim().Length < MinimumEligibilityLength ||
-        j.LastVerifiedUtc == null || j.LastVerifiedUtc < verifiedAfterUtc ||
         !JobCategories.All.Contains(j.Category) || !JobSourceTypes.All.Contains(j.SourceType ?? "") ||
         j.ApplyLink.Contains("@") || (j.OfficialSourceUrl != null && j.OfficialSourceUrl.Contains("@")) ||
         (j.WalkInStartDate.HasValue && j.WalkInEndDate.HasValue && j.WalkInEndDate < j.WalkInStartDate) ||
@@ -134,8 +132,6 @@ public static class JobQuality
         if (!ValidHttpUrl(job.OfficialSourceUrl)) issues.Add("valid official source URL");
         if (job.WalkInStartDate.HasValue && job.WalkInEndDate.HasValue && job.WalkInEndDate < job.WalkInStartDate) issues.Add("valid walk-in date range");
         if (job.SourcePostedDate.HasValue && job.SourcePostedDate.Value.Date > DateTime.UtcNow.Date) issues.Add("source posting date not in the future");
-        if (!job.LastVerifiedUtc.HasValue) issues.Add("last verified date");
-        else if (job.LastVerifiedUtc < VerificationCutoff(utcNow)) issues.Add($"verification within the last {VerificationMaxAgeDays} days");
         return issues;
     }
 
