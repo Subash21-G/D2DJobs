@@ -48,6 +48,13 @@ public class HomeController : Controller
         return query;
     }
 
+    [HttpGet("/jobs", Name = "all-jobs")]
+    public Task<IActionResult> AllJobs(string? search, string? category, string? location, string? experience, string? qualification, int page = 1, string sort = "latest", int? batch = null)
+    {
+        ViewData["AllJobs"] = true;
+        return Index(search, category, location, experience, qualification, page, sort, batch);
+    }
+
     public async Task<IActionResult> Index(string? search, string? category, string? location, string? experience, string? qualification, int page = 1, string sort = "latest", int? batch = null)
     {
         const int pageSize = 12;
@@ -56,8 +63,11 @@ public class HomeController : Controller
         if (batch.HasValue && (batch < 1990 || batch > 2100)) return BadRequest("Choose a graduation year between 1990 and 2100.");
         var categorySlug = JobCategories.Slug(category);
         if (!string.IsNullOrEmpty(category) && categorySlug == null) return MissingJob();
-        if (categorySlug != null && !Request.Path.StartsWithSegments("/jobs"))
+        if (categorySlug != null && Request.Path != "/jobs/" + categorySlug)
             return RedirectToRoutePermanent("category", new { categorySlug, search, location, experience, qualification, page, sort, batch });
+        if (categorySlug == null && ViewData["AllJobs"] is not true &&
+            (page != 1 || sort != "latest" || batch.HasValue || !string.IsNullOrWhiteSpace(search + location + experience + qualification)))
+            return RedirectToRoute("all-jobs", new { search, location, experience, qualification, page, sort, batch });
         ViewBag.Batch = batch;
         ViewData["Title"] = string.IsNullOrEmpty(category)
             ? "Latest Fresher Jobs, Off-Campus Drives & Internships in India | D2DJobs"
@@ -76,7 +86,7 @@ public class HomeController : Controller
             "Freshers Jobs" => "Browse current fresher jobs across India. Check qualifications, skills, locations and application deadlines before applying.",
             _ => "Browse current fresher jobs, off-campus drives and internships in India. Filter openings by graduation batch, qualification and location."
         };
-        ViewData["Canonical"] = Origin + (categorySlug == null ? "/" : "/jobs/" + categorySlug);
+        ViewData["Canonical"] = Origin + (categorySlug != null ? "/jobs/" + categorySlug : ViewData["AllJobs"] is true ? "/jobs" : "/");
         // Let visitors see every currently active, in-date listing. Keep the stricter
         // editorial gate separately for search indexing, rich results and advertising.
         var available = AvailableJobs();
@@ -124,7 +134,12 @@ public class HomeController : Controller
             ["Core Engineering Jobs"] = totals?.Core ?? 0, ["BPO / Support Jobs"] = totals?.Bpo ?? 0
         };
         var sections = new Dictionary<string, List<Job>>();
-        var showSections = page == 1 && sort == "latest" && !batch.HasValue && string.IsNullOrWhiteSpace(search + category + location + experience + qualification);
+        var showSections = ViewData["AllJobs"] is not true && page == 1 && sort == "latest" && !batch.HasValue && string.IsNullOrWhiteSpace(search + category + location + experience + qualification);
+        if (showSections)
+            ViewBag.HiringCompanies = await available.Where(j => j.CompanyName != "")
+                .GroupBy(j => j.CompanyName).OrderByDescending(g => g.Count()).ThenBy(g => g.Key)
+                .Select(g => new { Name = g.Key, Count = g.Count() })
+                .Take(12).ToDictionaryAsync(company => company.Name, company => company.Count);
         foreach (var name in JobCategories.All)
         {
             var categoryQuery = CategoryJobs(available, name);
@@ -316,7 +331,7 @@ public class HomeController : Controller
         XNamespace ns = "http://www.sitemaps.org/schemas/sitemap/0.9";
         var origin = Origin;
         var root = new XElement(ns + "urlset");
-        var staticPaths = new List<string> { "/Home/About", "/editorial-policy", "/career-guide", "/resources", "/Home/Contact", "/Home/PrivacyPolicy", "/Home/Terms", "/Home/Disclaimer", "/Home/Advertise", "/job-alerts", "/resume-builder" };
+        var staticPaths = new List<string> { "/jobs", "/Home/About", "/editorial-policy", "/career-guide", "/resources", "/Home/Contact", "/Home/PrivacyPolicy", "/Home/Terms", "/Home/Disclaimer", "/Home/Advertise", "/job-alerts", "/resume-builder" };
         if (jobs.Count > 0) staticPaths.Insert(0, "/");
         foreach (var path in staticPaths)
             root.Add(new XElement(ns + "url", new XElement(ns + "loc", origin + path)));

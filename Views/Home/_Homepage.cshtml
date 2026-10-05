@@ -1,0 +1,60 @@
+@model List<JobForFresher.Models.Job>
+@inject Microsoft.Extensions.Options.IOptions<SiteOptions> SiteSettings
+@{
+    var counts = ViewBag.CategoryCounts as Dictionary<string, int> ?? new();
+    var companies = ViewBag.HiringCompanies as Dictionary<string, int> ?? new();
+    string Initials(string name) => string.IsNullOrWhiteSpace(name) ? "D2D" : string.Concat(name.Split(' ', StringSplitOptions.RemoveEmptyEntries).Take(2).Select(word => char.ToUpperInvariant(word[0])));
+    var icons = new Dictionary<string, string> { ["Freshers Jobs"] = "fa-graduation-cap", ["Off Campus"] = "fa-briefcase", ["Walk-in"] = "fa-person-walking", ["IT Jobs"] = "fa-laptop-code", ["Government Jobs"] = "fa-landmark", ["Bank Jobs"] = "fa-building-columns", ["Internship Programs"] = "fa-seedling", ["Work From Home Jobs"] = "fa-house", ["Core Engineering Jobs"] = "fa-gears", ["BPO / Support Jobs"] = "fa-headset" };
+}
+<section class="home-hero" aria-labelledby="home-heading">
+    <div class="home-container">
+        <span class="home-kicker"><i class="fa-solid fa-star" aria-hidden="true"></i> A fresh start. A world of possibilities.</span>
+        <h1 id="home-heading">Find fresher jobs,<br />internships &amp; off-campus<br />drives at <span>your next<br class="hero-break" /> great company.</span></h1>
+        <p>Discover opportunities for your first job and your next move.<br class="hero-break" /> Explore roles across India, all in one place.</p>
+        <form method="get" asp-controller="Home" asp-action="AllJobs" class="home-search autocomplete-field" role="search">
+            <label for="jobSearch" class="visually-hidden">Search job title, company or skill</label>
+            <div class="home-search-input"><i class="fa-solid fa-magnifying-glass" aria-hidden="true"></i><input type="search" id="jobSearch" name="search" placeholder="Search role, company or skill…" maxlength="150" autocomplete="off" aria-controls="suggestionsBox" /><div id="suggestionsBox" class="suggestions-box" hidden></div></div>
+            <button type="submit" class="primary-button">Search jobs <i class="fa-solid fa-arrow-right" aria-hidden="true"></i></button>
+        </form>
+        <div class="home-benefits">
+            <div><i class="fa-solid fa-briefcase" aria-hidden="true"></i><span><strong>@ViewBag.TotalJobs active openings</strong><small>Explore your next opportunity</small></span></div>
+            <div><i class="fa-regular fa-bookmark" aria-hidden="true"></i><span><strong>Your own shortlist</strong><small>Save roles you want to revisit</small></span></div>
+            <div><i class="fa-solid fa-arrow-up-right-from-square" aria-hidden="true"></i><span><strong>Direct applications</strong><small>Follow employer application links</small></span></div>
+        </div>
+    </div>
+</section>
+<section class="home-section home-container" aria-labelledby="latest-heading">
+    <div class="home-section-heading"><div><h2 id="latest-heading">Latest job updates</h2><p>Fresh possibilities for your next chapter.</p></div><a asp-action="AllJobs">Explore all jobs <i class="fa-solid fa-arrow-right" aria-hidden="true"></i></a></div>
+    <div class="home-job-grid">
+        @foreach (var job in Model)
+        {
+            <article class="home-job-card">
+                <div class="home-job-top"><div class="home-avatar">@if (!string.IsNullOrWhiteSpace(job.CompanyLogo)) { <img src="~/uploads/logos/@job.CompanyLogo" alt="@job.CompanyName logo" loading="lazy" /> } else { <span>@Initials(job.CompanyName)</span> }</div><div class="home-job-info"><span class="home-company">@job.CompanyName</span><h3><a asp-action="Details" asp-route-slug="@job.Slug">@job.Title</a></h3><div class="home-job-facts">
+                    @if (!string.IsNullOrWhiteSpace(job.Location)) { <span><i class="fa-solid fa-location-dot" aria-hidden="true"></i> @job.Location</span> }
+                    @if (!string.IsNullOrWhiteSpace(job.Experience)) { <span><i class="fa-solid fa-briefcase" aria-hidden="true"></i> @job.Experience</span> }
+                    @if (!string.IsNullOrWhiteSpace(job.Salary)) { <span><i class="fa-solid fa-indian-rupee-sign" aria-hidden="true"></i> @job.Salary</span> }
+                    <span><i class="fa-regular fa-calendar" aria-hidden="true"></i> @(job.SourcePostedDate.HasValue ? "Posted" : "Added") @((job.SourcePostedDate ?? job.PostedDate).ToString("dd MMM yyyy"))</span>
+                </div></div></div>
+                <div class="home-job-actions"><a class="details-link" asp-action="Details" asp-route-slug="@job.Slug">View details</a>@if (Uri.TryCreate(job.ApplyLink, UriKind.Absolute, out var applyUrl) && applyUrl.Scheme is "http" or "https") { <a class="home-apply" asp-action="ApplyClick" asp-route-id="@job.Id" target="_blank" rel="noopener noreferrer" aria-label="Apply for @job.Title at @job.CompanyName (opens in a new tab)">Apply now <i class="fa-solid fa-arrow-up-right-from-square" aria-hidden="true"></i></a> }</div>
+            </article>
+        }
+    </div>
+    @if (Model.Count == 0) { <div class="empty-state"><h3>New opportunities are on their way</h3><p>Explore our career resources while you prepare for your next application.</p><a class="primary-button" asp-action="Resources">Explore career resources</a></div> }
+    @if (ViewBag.TotalPages > 1) { <div class="home-more"><a class="secondary-button" asp-action="AllJobs" asp-route-page="2">More opportunities <i class="fa-solid fa-arrow-right" aria-hidden="true"></i></a></div> }
+</section>
+<section class="home-category-section" aria-labelledby="categories-heading"><div class="home-container">
+    <div class="home-section-heading"><div><h2 id="categories-heading">Browse by category</h2><p>Find a path that fits where you are in your career.</p></div></div>
+    <div class="home-category-grid">@foreach (var name in JobCategories.All) { var count = counts.GetValueOrDefault(name); <a class="home-category" asp-route="category" asp-route-categorySlug="@JobCategories.Slug(name)"><i class="fa-solid @icons[name]" aria-hidden="true"></i><span><strong>@name</strong><small>@(count == 0 ? "No openings right now — check back soon" : $"{count} open {(count == 1 ? "job" : "jobs")}")</small></span></a> }</div>
+</div></section>
+@if (companies.Count > 0)
+{
+    <section class="home-section home-container" aria-labelledby="companies-heading"><div class="home-centered-heading"><h2 id="companies-heading">Hiring at leading companies</h2><p>Explore the companies with open roles right now.</p></div><div class="home-company-grid">@foreach (var company in companies) { <a class="home-company-card" asp-action="AllJobs" asp-route-search="@company.Key"><span class="home-avatar">@Initials(company.Key)</span><span><strong>@company.Key</strong><small>@company.Value active @(company.Value == 1 ? "opening" : "openings")</small></span></a> }</div></section>
+}
+<section class="home-section home-container home-alerts" aria-labelledby="alerts-heading">
+    <div class="home-alert-panel"><div><span class="home-kicker"><i class="fa-regular fa-bell" aria-hidden="true"></i> Job alerts</span><h2 id="alerts-heading">Never miss your next opportunity</h2><p>Follow new openings in your RSS reader or choose a job alert channel.</p></div><a class="primary-button" asp-action="Alerts">Get job alerts <i class="fa-solid fa-arrow-right" aria-hidden="true"></i></a></div>
+    @if (!string.IsNullOrWhiteSpace(SiteSettings.Value.WhatsAppUrl))
+    {
+        <div class="home-alert-panel home-whatsapp"><div><span class="home-kicker"><i class="fa-brands fa-whatsapp" aria-hidden="true"></i> WhatsApp channel</span><h2>Great opportunities.<br />Straight to your WhatsApp.</h2><p>Join our community for fresher jobs, internships and off-campus drives.</p></div><a class="home-whatsapp-button" href="@SiteSettings.Value.WhatsAppUrl" target="_blank" rel="noopener noreferrer">Join WhatsApp channel <i class="fa-solid fa-arrow-up-right-from-square" aria-hidden="true"></i></a></div>
+    }
+</section>
+@if (!string.IsNullOrWhiteSpace(SiteSettings.Value.WhatsAppUrl)) { <a class="home-floating-whatsapp" href="@SiteSettings.Value.WhatsAppUrl" target="_blank" rel="noopener noreferrer"><i class="fa-brands fa-whatsapp" aria-hidden="true"></i><span>Join WhatsApp channel</span></a> }
