@@ -79,5 +79,9 @@ namespace JobForFresher.Models
         public int ApplyClicks { get; set; } = 0;
 
         public DateTime PostedDate { get; set; } = DateTime.Now;
+
+        public bool IsExpired(DateTime today) =>
+            ExpiryDate?.Date < today.Date ||
+            (SourcePostedDate ?? PostedDate).Date.AddDays(30) <= today.Date;
     }
 }

@@ -62,15 +62,15 @@ public class AdminController(ApplicationDbContext db, IWebHostEnvironment enviro
     public async Task<IActionResult> Index(string? search, string? category, string? status, int page = 1, int recentDays = 0, DateTime? addedFrom = null, DateTime? addedTo = null, string dateOrder = "newest")
     {
         var today = DateTime.Today;
-        var totals = await db.Jobs.GroupBy(j => 1).Select(g => new { Total = g.Count(), Featured = g.Count(j => j.IsFeatured), Active = g.Count(j => j.IsActive && (j.ExpiryDate == null || j.ExpiryDate >= today)), Expired = g.Count(j => j.ExpiryDate < today) }).FirstOrDefaultAsync();
+        var totals = await db.Jobs.GroupBy(j => 1).Select(g => new { Total = g.Count(), Featured = g.Count(j => j.IsFeatured), Active = g.Count(j => j.IsActive && (j.ExpiryDate == null || j.ExpiryDate >= today) && (j.SourcePostedDate ?? j.PostedDate).Date > today.AddDays(-30)), Expired = g.Count(j => (j.ExpiryDate < today || (j.SourcePostedDate ?? j.PostedDate).Date <= today.AddDays(-30))) }).FirstOrDefaultAsync();
         ViewBag.TotalJobs = totals?.Total ?? 0; ViewBag.FeaturedJobs = totals?.Featured ?? 0; ViewBag.ActiveJobs = totals?.Active ?? 0; ViewBag.ExpiredJobs = totals?.Expired ?? 0;
         var jobs = db.Jobs.AsNoTracking(); search = search?.Trim();
         if (!string.IsNullOrEmpty(search)) jobs = jobs.Where(j => j.Title.Contains(search) || j.CompanyName.Contains(search) || j.Location.Contains(search) || j.Skills.Contains(search));
         if (!string.IsNullOrEmpty(category)) jobs = jobs.Where(j => j.Category == category);
-        jobs = status switch { "Active" => jobs.Where(j => j.IsActive && (j.ExpiryDate == null || j.ExpiryDate >= today)), "Inactive" => jobs.Where(j => !j.IsActive), "Expired" => jobs.Where(j => j.ExpiryDate < today), _ => jobs };
+        jobs = status switch { "Active" => jobs.Where(j => j.IsActive && (j.ExpiryDate == null || j.ExpiryDate >= today) && (j.SourcePostedDate ?? j.PostedDate).Date > today.AddDays(-30)), "Inactive" => jobs.Where(j => !j.IsActive), "Expired" => jobs.Where(j => (j.ExpiryDate < today || (j.SourcePostedDate ?? j.PostedDate).Date <= today.AddDays(-30))), _ => jobs };
         var verificationCutoffForDuplicates = JobQuality.VerificationCutoff();
         var verifiedActive = db.Jobs.AsNoTracking()
-            .Where(j => j.IsActive && (j.AvailableFrom == null || j.AvailableFrom <= today) && (j.ExpiryDate == null || j.ExpiryDate >= today))
+            .Where(j => j.IsActive && (j.AvailableFrom == null || j.AvailableFrom <= today) && (j.ExpiryDate == null || j.ExpiryDate >= today) && (j.SourcePostedDate ?? j.PostedDate).Date > today.AddDays(-30))
             .Where(JobQuality.ReadyForIndex(verificationCutoffForDuplicates));
         if (status == "Needs review")
         {
@@ -109,7 +109,7 @@ public class AdminController(ApplicationDbContext db, IWebHostEnvironment enviro
         {
             var pageIds = pageJobs.Select(job => job.Id).ToArray();
             var duplicatePageIds = await db.Jobs.AsNoTracking()
-                .Where(j => pageIds.Contains(j.Id) && (j.ExpiryDate == null || j.ExpiryDate >= today))
+                .Where(j => pageIds.Contains(j.Id) && (j.ExpiryDate == null || j.ExpiryDate >= today) && (j.SourcePostedDate ?? j.PostedDate).Date > today.AddDays(-30))
                 .Where(j => verifiedActive.Any(other => other.Id != j.Id &&
                     (other.ApplicationInstructions!.Trim() == j.ApplicationInstructions!.Trim() ||
                      other.EditorialNote!.Trim() == j.EditorialNote!.Trim())))
@@ -263,7 +263,7 @@ public class AdminController(ApplicationDbContext db, IWebHostEnvironment enviro
             var editorial = NormalizeGuidance(job.EditorialNote);
             var cutoff = JobQuality.VerificationCutoff();
             var existingGuidance = await db.Jobs.AsNoTracking().Where(JobQuality.ReadyForIndex(cutoff)).Where(other => other.Id != job.Id && other.IsActive &&
-                (other.AvailableFrom == null || other.AvailableFrom <= DateTime.Today) && (other.ExpiryDate == null || other.ExpiryDate >= DateTime.Today))
+                (other.AvailableFrom == null || other.AvailableFrom <= DateTime.Today) && (other.ExpiryDate == null || other.ExpiryDate >= DateTime.Today) && (other.SourcePostedDate ?? other.PostedDate).Date > DateTime.Today.AddDays(-30))
                 .Select(other => new { other.ApplicationInstructions, other.EditorialNote }).ToListAsync();
             var duplicate = existingGuidance.Any(other => NormalizeGuidance(other.ApplicationInstructions) == application || NormalizeGuidance(other.EditorialNote) == editorial);
             if (duplicate) issues.Add("unique, job-specific application and editorial guidance");

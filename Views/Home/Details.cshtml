@@ -111,7 +111,7 @@ var breadcrumbSchema = new Dictionary<string, object>
 <div class="jobs-layout job-details-layout"><article class="detail-panel">
 <div class="detail-company"><div class="company-avatar">@if (!string.IsNullOrEmpty(Model.CompanyLogo)) { <img src="~/uploads/logos/@Model.CompanyLogo" alt="@Model.CompanyName logo" /> } else { <span>@(string.IsNullOrWhiteSpace(Model.CompanyName) ? "D2D" : Model.CompanyName[..1].ToUpperInvariant())</span> }</div><span>@Model.CompanyName</span>@if (Model.IsFeatured) { <span class="featured-badge">Featured</span> }</div>
 <h1><span aria-hidden="true">&#x1F680;</span> @Model.Title</h1><p class="detail-meta">@if(Model.SourcePostedDate.HasValue){<span>Posted @Model.SourcePostedDate.Value.ToString("dd MMM yyyy")</span>}else{<span>Added to D2DJobs @displayAddedAt.ToString("dd MMM yyyy")</span>} · @Model.Location</p>
-@if (expired) { <div class="application-note"><strong>This opening has expired</strong>The closing date has passed. This page is retained only as a reference and is excluded from search indexing, feeds, category pages, and the sitemap.</div> }
+@if (expired) { <div class="application-note"><strong>This opening has expired</strong>The closing date has passed or 30 days have elapsed since this job was posted. This page is retained only as a reference and is excluded from search indexing, feeds, category pages, and the sitemap.</div> }
 <partial name="_JobDeadline" model="Model" />
 <div class="apply-actions">
 @if (!expired && !saved) { <form method="post" asp-action="SaveJob" asp-route-id="@Model.Id"><button class="secondary-button" type="submit"><i class="fa-regular fa-bookmark" aria-hidden="true"></i> Save job</button></form> }

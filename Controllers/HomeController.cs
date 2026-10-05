@@ -24,7 +24,7 @@ public class HomeController : Controller
         _savedJobsProtector = protection.CreateProtector("JobForFresher.SavedJobs.v1");
     }
     private IQueryable<Job> AvailableJobs() => _context.Jobs.AsNoTracking()
-        .Where(j => j.IsActive && (j.AvailableFrom == null || j.AvailableFrom <= DateTime.Today) && (j.ExpiryDate == null || j.ExpiryDate >= DateTime.Today));
+        .Where(j => j.IsActive && (j.AvailableFrom == null || j.AvailableFrom <= DateTime.Today) && (j.ExpiryDate == null || j.ExpiryDate >= DateTime.Today) && (j.SourcePostedDate ?? j.PostedDate).Date > DateTime.Today.AddDays(-30));
     private IQueryable<Job> DiscoverableJobs() => AvailableJobs();
     private static IQueryable<Job> CategoryJobs(IQueryable<Job> query, string category) => category switch
     {
@@ -184,7 +184,7 @@ public class HomeController : Controller
         var job = await _context.Jobs.AsNoTracking().FirstOrDefaultAsync(j => j.IsActive && j.Slug == slug);
         if (job == null) return MissingJob();
         if (job.AvailableFrom > DateTime.Today) return MissingJob();
-        var expired = job.ExpiryDate < DateTime.Today;
+        var expired = job.IsExpired(DateTime.Today);
         if (!IsAdminSession && !expired)
         {
             await _context.Jobs.Where(j => j.Id == job.Id).ExecuteUpdateAsync(set => set.SetProperty(j => j.ViewsCount, j => j.ViewsCount + 1));

@@ -29,7 +29,7 @@ try
             report.Checks.Add(new("Database migrations", pending == 0 ? "Ready" : "Action needed", pending == 0 ? "All migrations in this application are applied." : $"{pending} migration(s) pending. Back up the database and apply the reviewed deployment SQL."));
             if (pending == 0)
             {
-                var active = db.Jobs.AsNoTracking().Where(j => j.IsActive && (j.AvailableFrom == null || j.AvailableFrom <= DateTime.Today) && (j.ExpiryDate == null || j.ExpiryDate >= DateTime.Today));
+                var active = db.Jobs.AsNoTracking().Where(j => j.IsActive && (j.AvailableFrom == null || j.AvailableFrom <= DateTime.Today) && (j.ExpiryDate == null || j.ExpiryDate >= DateTime.Today) && (j.SourcePostedDate ?? j.PostedDate).Date > DateTime.Today.AddDays(-30));
                 var total = await active.CountAsync(cancellationToken);
                 var verificationCutoff = JobQuality.VerificationCutoff();
                 var verifiedActive = active.Where(JobQuality.ReadyForIndex(verificationCutoff));
