@@ -35,7 +35,7 @@
                     @if (!string.IsNullOrWhiteSpace(job.Salary)) { <span><i class="fa-solid fa-indian-rupee-sign" aria-hidden="true"></i> @job.Salary</span> }
                     <span><i class="fa-regular fa-calendar" aria-hidden="true"></i> @(job.SourcePostedDate.HasValue ? "Posted" : "Added") @((job.SourcePostedDate ?? job.PostedDate).ToString("dd MMM yyyy"))</span>
                 </div></div></div>
-                <div class="home-job-actions"><a class="details-link" asp-action="Details" asp-route-slug="@job.Slug">View details</a>@if (Uri.TryCreate(job.ApplyLink, UriKind.Absolute, out var applyUrl) && applyUrl.Scheme is "http" or "https") { <a class="home-apply" asp-action="ApplyClick" asp-route-id="@job.Id" target="_blank" rel="noopener noreferrer" aria-label="Apply for @job.Title at @job.CompanyName (opens in a new tab)">Apply now <i class="fa-solid fa-arrow-up-right-from-square" aria-hidden="true"></i></a> }</div>
+                <div class="home-job-actions"><a class="details-link" asp-action="Details" asp-route-slug="@job.Slug">View details</a></div>
             </article>
         }
     </div>
