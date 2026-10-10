@@ -150,7 +150,37 @@ var breadcrumbSchema = new Dictionary<string, object>
 @if(!string.IsNullOrWhiteSpace(Model.SelectionProcess)){<h2>Selection process</h2><div class="description-text">@Model.SelectionProcess</div>}
 @if(!string.IsNullOrWhiteSpace(Model.EditorialNote)){<h2>D2DJobs editorial guidance</h2><div class="description-text">@Model.EditorialNote</div>}
 @if(!string.IsNullOrWhiteSpace(Model.DocumentsRequired)){<h2>Documents to prepare</h2><div class="description-text">@Model.DocumentsRequired</div>}
-@if(walkInStart.HasValue || walkInEnd.HasValue || !string.IsNullOrWhiteSpace(Model.WalkInVenue)){<h2>Walk-in details</h2><p>@if(Model.WalkInStartDate.HasValue || Model.WalkInEndDate.HasValue){<span>@Model.WalkInStartDate?.ToString("dd MMM yyyy, hh:mm tt")@(Model.WalkInStartDate.HasValue ? " IST" : "")@if(Model.WalkInStartDate.HasValue && Model.WalkInEndDate.HasValue){<span> – </span>}@Model.WalkInEndDate?.ToString("dd MMM yyyy, hh:mm tt")@(Model.WalkInEndDate.HasValue ? " IST" : "")</span>}else{<span>@Model.WalkInDate?.ToString("dd MMM yyyy, hh:mm tt") @(Model.WalkInDate.HasValue ? "IST" : "")</span>}</p><div class="description-text">@Model.WalkInVenue</div>}
+@{
+    Func<DateTime?, string> showWalkIn = value =>
+        !value.HasValue ? string.Empty :
+        value.Value.ToString("dd MMM yyyy",
+            System.Globalization.CultureInfo.InvariantCulture) +
+        (value.Value.TimeOfDay == TimeSpan.Zero
+            ? ""
+            : value.Value.ToString(", hh:mm tt",
+                System.Globalization.CultureInfo.InvariantCulture) + " IST");
+}
+@if (walkInStart.HasValue || walkInEnd.HasValue || !string.IsNullOrWhiteSpace(Model.WalkInVenue))
+{
+    <h2>Walk-in details</h2>
+
+    @if (walkInStart.HasValue || walkInEnd.HasValue)
+    {
+        <p>
+            @showWalkIn(walkInStart)
+            @if (walkInEnd.HasValue &&
+                (!walkInStart.HasValue || walkInEnd.Value != walkInStart.Value))
+            {
+                <span> – @showWalkIn(walkInEnd)</span>
+            }
+        </p>
+    }
+
+    @if (!string.IsNullOrWhiteSpace(Model.WalkInVenue))
+    {
+        <div class="description-text">@Model.WalkInVenue</div>
+    }
+}
 @if(Uri.TryCreate(Model.OfficialSourceUrl,UriKind.Absolute,out var sourceUri) && sourceUri.Scheme is "http" or "https"){<p><a href="@sourceUri.AbsoluteUri" target="_blank" rel="noopener noreferrer">@sourceLinkLabel &nearr;</a> <span class="muted">(@JobSourceTypes.Label(Model.SourceType))</span></p>}
 <h2 id="how-to-apply">How to apply</h2>@if (canApply) { <div class="description-text">@Model.ApplicationInstructions</div> }
 else if (expired) { <p class="muted">Applications are no longer accepted through this listing.</p> }

@@ -72,6 +72,25 @@ public class AdminController(ApplicationDbContext db, IWebHostEnvironment enviro
         var verifiedActive = db.Jobs.AsNoTracking()
             .Where(j => j.IsActive && (j.AvailableFrom == null || j.AvailableFrom <= today) && (j.ExpiryDate == null || j.ExpiryDate >= today) && (j.SourcePostedDate ?? j.PostedDate).Date > today.AddDays(-30))
             .Where(JobQuality.ReadyForIndex(verificationCutoffForDuplicates));
+        // Review-only detection: never delete or deactivate automatically.
+        var recentJobsForDuplicates = db.Jobs.AsNoTracking()
+            .Where(j => (j.ExpiryDate == null || j.ExpiryDate >= today) &&
+                (j.SourcePostedDate ?? j.PostedDate).Date > today.AddDays(-30));
+
+        var suspectedDuplicateIds = recentJobsForDuplicates
+            .Where(j => recentJobsForDuplicates.Any(other =>
+                other.Id != j.Id &&
+                (
+                    (j.ApplyLink != "" && j.ApplyLink == other.ApplyLink) ||
+                    (
+                        j.CompanyName.Trim().ToLower() == other.CompanyName.Trim().ToLower() &&
+                        j.Role.Trim() != "" &&
+                        j.Role.Trim().ToLower() == other.Role.Trim().ToLower() &&
+                        j.Location.Trim() != "" &&
+                        j.Location.Trim().ToLower() == other.Location.Trim().ToLower()
+                    )
+                )))
+            .Select(j => j.Id);
         if (status == "Needs review")
         {
             var duplicateIds = db.Jobs.AsNoTracking()
@@ -84,7 +103,7 @@ public class AdminController(ApplicationDbContext db, IWebHostEnvironment enviro
                 .Where(j => j.ExpiryDate == null || j.ExpiryDate >= today)
                 .Where(JobQuality.NeedsReview(verificationCutoffForDuplicates))
                 .Select(j => j.Id);
-            jobs = jobs.Where(j => needsReviewIds.Contains(j.Id) || duplicateIds.Contains(j.Id));
+            jobs = jobs.Where(j => needsReviewIds.Contains(j.Id) || duplicateIds.Contains(j.Id) || suspectedDuplicateIds.Contains(j.Id));
         }
         recentDays = recentDays is 7 or 30 or 90 ? recentDays : 0;
         dateOrder = dateOrder == "oldest" ? "oldest" : "newest";
@@ -114,10 +133,15 @@ public class AdminController(ApplicationDbContext db, IWebHostEnvironment enviro
                     (other.ApplicationInstructions!.Trim() == j.ApplicationInstructions!.Trim() ||
                      other.EditorialNote!.Trim() == j.EditorialNote!.Trim())))
                 .Select(j => j.Id).ToListAsync();
+            var suspectedDuplicatePageIds = await suspectedDuplicateIds
+                .Where(id => pageIds.Contains(id))
+                .ToListAsync();
             reviewReasons = pageJobs.ToDictionary(job => job.Id, job =>
             {
                 var reasons = JobQuality.ReviewIssues(job).ToList();
                 if (duplicatePageIds.Contains(job.Id)) reasons.Add("repeated guidance also used by another active job");
+                if (suspectedDuplicatePageIds.Contains(job.Id))
+                    reasons.Add("Possible duplicate: same application URL or company, role and location. Verify source job ID and dates.");
                 if (!job.SourcePostedDate.HasValue) reasons.Add("check whether the employer source states a posting date; leave blank if it does not");
                 return reasons.Distinct(StringComparer.OrdinalIgnoreCase).ToArray();
             });
@@ -163,11 +187,11 @@ public class AdminController(ApplicationDbContext db, IWebHostEnvironment enviro
                 job.Slug = Slug(job.Title);
                 job.PostedDate = DateTime.Now;
                 job.ImportedUtc = DateTime.UtcNow;
-                job.IsActive = true;
+                job.IsActive = false;
             }
             await db.Jobs.AddRangeAsync(jobs, cancellationToken);
             await db.SaveChangesAsync(cancellationToken);
-            TempData["Notice"] = $"{jobs.Count} job(s) imported and activated. Current, non-expired jobs are now available on the homepage.";
+            TempData["Notice"] = $"{jobs.Count} job(s) imported as inactive drafts. Review and publish approved jobs from Admin.";
             return RedirectToAction(nameof(Index));
         }
         catch (InvalidDataException)
