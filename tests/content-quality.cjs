@@ -69,7 +69,7 @@ const nodePath = require('node:path');
     check(importedResponse.status() === 200, 'Excel import returns its review summary');
     const importHtml = await importedResponse.text();
     check(importHtml.includes('Accepted 2; rejected 0; saved 2 inactive draft(s).'), 'Import summary separates accepted, rejected and draft rows');
-    check(importHtml.includes('LastVerifiedUtc was ignored') && importHtml.includes('source checked by a person'), 'Import never trusts workbook source verification dates');
+    check(importHtml.includes('LastVerifiedUtc was ignored') && importHtml.includes('IsActive was ignored') && importHtml.includes('source checked by a person'), 'Import ignores workbook activation and verification fields');
     check(importHtml.includes('Review required before publishing') && importHtml.includes('Review imported drafts'), 'Import summary links to draft review and explains the human publication steps');
     await create({ ...job('UnsupportedCategory'), Category: 'Company Wise Jobs' });
     await create({ ...job('MissingSourceType'), SourceType: '' });

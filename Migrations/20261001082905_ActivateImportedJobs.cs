@@ -10,13 +10,14 @@ namespace JobForFresher.Migrations
         /// <inheritdoc />
         protected override void Up(MigrationBuilder migrationBuilder)
         {
-            migrationBuilder.Sql("UPDATE [Jobs] SET [IsActive] = 1 WHERE [ImportedUtc] IS NOT NULL AND [IsActive] = 0;");
+            // Intentionally empty. Imported listings remain inactive until an editor verifies them.
+            // Keep this migration ID so EF Core can advance migration history in deployments where it is pending.
         }
 
         /// <inheritdoc />
         protected override void Down(MigrationBuilder migrationBuilder)
         {
-            // The previous active state cannot be reconstructed safely.
+            // Intentionally empty: Up performs no schema or data changes to reverse.
         }
     }
 }
