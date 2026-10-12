@@ -24,8 +24,8 @@ const nodePath = require('node:path');
     const token = await page.locator('[name="__RequestVerificationToken"]').first().inputValue();
     const date = days => new Date(Date.now() + days * 86400000).toISOString().slice(0, 16);
     const job = suffix => ({
-      __RequestVerificationToken: token, Title: 'QUALITY ' + suffix, CompanyName: 'Isolated Test Employer',
-      Category: 'IT Jobs', Role: 'Graduate software engineer', Location: 'Chennai', Qualification: 'Bachelor of Engineering in Computer Science',
+      __RequestVerificationToken: token, Title: 'QUALITY ' + suffix, CompanyName: 'Isolated Test Employer ' + suffix,
+      Category: 'IT Jobs', Role: 'Graduate software engineer ' + suffix, Location: 'Chennai', Qualification: 'Bachelor of Engineering in Computer Science',
       Skills: 'C#, SQL, debugging and automated testing', Experience: 'Fresher', JobType: 'Full time', Salary: 'Not disclosed',
       Description: 'Isolated regression fixture, not a real vacancy. The graduate engineer works on a small web application, investigates reproducible defects, writes tests for changed behavior and explains implementation decisions during a supervised code review.',
       Eligibility: 'Computer science engineering graduates who can demonstrate a working web project and explain their own contribution.',
@@ -33,7 +33,7 @@ const nodePath = require('node:path');
       ApplicationInstructions: `For test opening ${suffix}, use the employer careers link, select the graduate engineering vacancy, attach the requested resume and retain the portal confirmation.`,
       EditorialNote: `Preparation for test opening ${suffix}: choose one project and be ready to explain a defect you diagnosed, the evidence you collected and how you verified the correction.`,
       SourceType: 'OfficialEmployer', SourcePostedDate: date(-5).slice(0, 10),
-      ApplyLink: 'https://example.invalid/apply', OfficialSourceUrl: 'https://example.invalid/careers',
+      ApplyLink: 'https://example.invalid/apply/' + encodeURIComponent(suffix), OfficialSourceUrl: 'https://example.invalid/careers/' + encodeURIComponent(suffix),
       LastVerifiedUtc: date(-1), IsActive: 'true', IsFeatured: 'false'
     });
     const create = async form => {
@@ -42,7 +42,8 @@ const nodePath = require('node:path');
     };
     for (const suffix of ['Original', 'Second', 'Third', 'Fourth', 'Fifth']) {
       const listing = job(suffix);
-      if (suffix === 'Third') { listing.SourcePostedDate = ''; listing.SourceType = 'Other'; }
+      if (suffix === 'Second') listing.WalkInDate = '2026-10-20';
+      if (suffix === 'Third') { listing.SourcePostedDate = ''; listing.SourceType = 'OfficialEmployer'; }
       if (suffix === 'Fourth') { listing.SourceType = 'GovernmentPortal'; listing.WalkInStartDate = '2026-10-05T09:00'; listing.WalkInEndDate = '2026-10-06T17:00'; }
       if (suffix === 'Fifth') listing.SourceType = 'JobPortal';
       await create(listing);
@@ -63,13 +64,17 @@ const nodePath = require('node:path');
         File: { name: 'quality-import-fixture.xlsx', mimeType: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet', buffer: fs.readFileSync(importWorkbook) }
       }
     });
-    check(importedResponse.status() === 302, 'Excel import accepts test workbook');
+    check(importedResponse.status() === 200, 'Excel import returns its review summary');
+    const importHtml = await importedResponse.text();
+    check(importHtml.includes('Accepted 2; rejected 0; saved 2 inactive draft(s).'), 'Import summary separates accepted, rejected and draft rows');
+    check(importHtml.includes('LastVerifiedUtc was ignored') && importHtml.includes('source checked by a person'), 'Import never trusts workbook source verification dates');
     await create({ ...job('UnsupportedCategory'), Category: 'Company Wise Jobs' });
     await create({ ...job('MissingSourceType'), SourceType: '' });
     await create({ ...job('Generic'), ApplicationInstructions: 'Eligible candidates can apply online through the official website. For this particular test vacancy, select its role, upload the required resume and retain the portal confirmation number.' });
     await create({ ...job('MultiJob'), Title: 'Top 10 Fresher Jobs and Companies' });
+    await create({ ...job('GenericApplyUrl'), ApplyLink: 'https://example.invalid/' });
 
-    for (const title of ['Duplicate', 'Thin', 'Stale', 'UnsupportedCategory', 'MissingSourceType', 'Generic', 'MultiJob']) {
+    for (const title of ['Duplicate', 'Thin', 'Stale', 'UnsupportedCategory', 'MissingSourceType', 'Generic', 'MultiJob', 'GenericApplyUrl']) {
       await page.goto(base + '/Admin?search=' + encodeURIComponent('QUALITY ' + title));
       const edit = await page.locator('a[href^="/Admin/Edit/"]').first().getAttribute('href');
       await page.goto(base + edit);
@@ -78,7 +83,14 @@ const nodePath = require('node:path');
     await page.goto(base + '/Admin?search=QUALITY%20Imported%20Unsupported');
     const importedUnsupportedEdit = await page.locator('a[href^="/Admin/Edit/"]').first().getAttribute('href');
     await page.goto(base + importedUnsupportedEdit);
-    check(await page.locator('[name="IsActive"][type="checkbox"]').isChecked(), 'Every valid Excel row is activated automatically');
+    check(!await page.locator('[name="IsActive"][type="checkbox"]').isChecked(), 'Imported jobs remain inactive drafts');
+    await page.goto(base + '/Admin?search=' + encodeURIComponent('QUALITY Imported Date Test'));
+    const importedSupportedEdit = await page.locator('a[href^="/Admin/Edit/"]').first().getAttribute('href');
+    await page.goto(base + importedSupportedEdit);
+    await page.locator('[name="LastVerifiedUtc"]').fill(date(-1).slice(0, 10));
+    await page.locator('[name="IsActive"][type="checkbox"]').check();
+    await page.getByRole('button', { name: 'Save changes' }).click();
+    await page.waitForURL('**/Admin');
     const rows = JSON.parse(execFileSync('powershell.exe', ['-NoProfile', '-File', 'tests/Set-QualityFixtures.ps1'], { encoding: 'utf8' }));
     const path = title => '/job/' + rows.find(row => row.title === 'QUALITY ' + title).slug;
     const get = async url => {
@@ -87,7 +99,7 @@ const nodePath = require('node:path');
     };
     const hasJobSchema = html => html.includes('"@type":"JobPosting"');
     const hasAd = html => html.includes('class="adsbygoogle"') || html.includes('pagead/js/adsbygoogle.js');
-    const excluded = ['Original', 'Duplicate', 'Thin', 'Stale', 'Expired'];
+    const excluded = ['Original', 'Duplicate', 'Thin', 'Stale', 'GenericApplyUrl', 'Expired'];
     for (const title of excluded) {
       const { status, html } = await get(path(title));
       check(status === (title === 'Expired' ? 410 : 200), title + ' response');
@@ -101,6 +113,7 @@ const nodePath = require('node:path');
     check(hasJobSchema(valid.html), 'Complete unique listing has job schema');
     check(valid.html.includes(`"datePosted":"${job('Second').SourcePostedDate}"`), 'Job schema uses the factual source posting date');
     check(valid.html.includes('View official employer posting') && valid.html.includes('Apply on company website'), 'Official employer links are labelled accurately');
+    check(valid.html.includes('20 Oct 2026') && !valid.html.includes('12:00 AM IST'), 'Date-only walk-in values do not render a midnight time');
     check(hasAd(valid.html), 'Positive control: eligible page renders fake ad configuration');
     const noSourceDate = await get(path('Third'));
     check(noSourceDate.html.includes('Added to D2DJobs') && !noSourceDate.html.includes('"datePosted"'), 'Missing employer posting date is not fabricated in page/schema');
@@ -116,11 +129,16 @@ const nodePath = require('node:path');
     check(/25 Sep(?:t)? 2026/.test(importedDateTest.html), 'Import keeps the source PostedDate: ' + importedDateLabels.join(' | '));
     check(importedDateTest.html.includes('"datePosted":"2026-09-25"'), 'Imported source PostedDate is used for JobPosting datePosted');
     const home = await get('/');
-    check(['Original', 'Duplicate', 'Thin', 'Stale'].every(title => home.html.includes(path(title))), 'Active legacy jobs remain visible on the homepage');
-    check(!hasAd(home.html), 'Homepage containing unreviewed listings stays ad-free');
-    check(home.html.includes('content="noindex, follow"'), 'Homepage stays noindex while any displayed active listing needs review');
+    check(['Original', 'Duplicate', 'Thin', 'Stale'].every(title => !home.html.includes(path(title))), 'Unverified, duplicate and thin legacy jobs stay out of public discovery');
+    check(hasAd(home.html), 'Curated homepage ads require the isolated approved and consent-ready test configuration');
+    check(home.html.includes('content="index, follow"'), 'Homepage remains indexable when it contains curated jobs and editorial content');
     const sitemap = (await get('/sitemap.xml')).html;
     const feed = (await get('/jobs/feed.xml')).html;
+    const secondSitemapIndex = sitemap.indexOf(path('Second'));
+    const secondSitemapBlock = sitemap.slice(sitemap.lastIndexOf('<url>', secondSitemapIndex), sitemap.indexOf('</url>', secondSitemapIndex));
+    const sitemapUrls = [...sitemap.matchAll(/<loc>(.*?)<\/loc>/g)].map(match => new URL(match[1]));
+    check(sitemapUrls.some(url => url.pathname === '/') && sitemapUrls.some(url => url.pathname === '/jobs/work-from-home'), 'Homepage and useful empty category pages stay in the sitemap');
+    check(!secondSitemapBlock.includes('<lastmod>'), 'Job lastmod is omitted when the app has no actual content-modified timestamp');
     for (const title of [...excluded, 'Scheduled']) {
       check(!sitemap.includes(path(title)), title + ' excluded from sitemap');
       check(!feed.includes(path(title)), title + ' excluded from RSS');
@@ -130,16 +148,16 @@ const nodePath = require('node:path');
       check(!sitemap.includes(path(title)) && !feed.includes(path(title)), title + ' remains out of SEO discovery until reviewed');
     check(sitemap.includes(path('Second')) && feed.includes(path('Second')) && sitemap.includes(path('Imported Date Test')) && feed.includes(path('Imported Date Test')), 'Eligible listings in sitemap and RSS');
     const importedUnsupportedPath = '/job/' + rows.find(row => row.title === 'QUALITY Imported Unsupported').slug;
-    check(home.html.includes(importedUnsupportedPath) && !sitemap.includes(importedUnsupportedPath) && !feed.includes(importedUnsupportedPath), 'Imported job is visible to viewers while incomplete metadata stays out of SEO feeds');
+    check(!home.html.includes(importedUnsupportedPath) && !sitemap.includes(importedUnsupportedPath) && !feed.includes(importedUnsupportedPath), 'Unverified imported jobs stay out of public discovery and SEO feeds');
     for (const url of ['/?search=absent-quality-fixture', '/Home/About', '/resources', '/definitely-missing']) {
       check(!hasAd((await get(url)).html), 'No ads on ' + url);
     }
     const readiness = (await get('/Readiness')).html;
-    check(readiness.includes('10 active listing(s); 5 need substantial publishing details.'), 'Readiness counts match active listings');
+    check(readiness.includes('10 active listing(s); 5 need substantial publishing details.'), 'Readiness counts match active listings and source freshness');
     await page.goto(base + '/Admin?status=Needs%20review');
-    check(await page.locator('.admin-job-table tbody tr').count() === 9, 'Review queue includes legacy and newly held quality cases');
+    check(await page.locator('.admin-job-table tbody tr').count() === 10, 'Review queue includes legacy duplicates and newly held quality cases');
     const reviewReasons = (await page.locator('.review-reasons').allInnerTexts()).join(' | ');
-    check(reviewReasons.includes('supported job category') && reviewReasons.includes('source type') && reviewReasons.includes('generic or repeated') && reviewReasons.includes('single-job listing'), 'Needs Review shows category, source type, generic text and multi-job reasons');
+    check(reviewReasons.includes('supported job category') && reviewReasons.includes('source type') && reviewReasons.includes('generic or repeated') && reviewReasons.includes('single-job listing') && reviewReasons.includes('vacancy-specific application URL'), 'Needs Review shows category, source, generic copy, generic application URLs and multi-job reasons');
     check(reviewReasons.includes('check whether the employer source states a posting date'), 'Needs Review prompts a factual source-date check');
     await page.goto(base + '/resources');
     const resourceLinks = [...new Set(await page.locator('a[href^="/resources/"]').evaluateAll(links => links.map(link => link.getAttribute('href'))))];
@@ -147,7 +165,7 @@ const nodePath = require('node:path');
     for (const url of resourceLinks) check((await get(url)).status === 200 && sitemap.includes(url), 'Guide route and sitemap: ' + url);
     for (const width of [320, 390, 768, 1440]) {
       await page.setViewportSize({ width, height: 900 });
-      for (const url of [path('Second'), path('Duplicate'), '/resources', resourceLinks[0]]) {
+      for (const url of ['/', '/jobs/it-software', path('Second'), path('Duplicate'), '/resources', resourceLinks[0], '/Admin', '/Admin/Import']) {
         await page.goto(base + url);
         check(!await page.evaluate(() => document.documentElement.scrollWidth > innerWidth + 1), `No overflow: ${url} at ${width}`);
       }

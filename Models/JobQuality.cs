@@ -34,10 +34,14 @@ public static class JobQuality
         j.SelectionProcess != null && j.SelectionProcess.Trim().Length >= MinimumSelectionProcessLength &&
         j.ApplicationInstructions != null && j.ApplicationInstructions.Trim().Length >= MinimumApplicationInstructionsLength &&
         j.EditorialNote != null && j.EditorialNote.Trim().Length >= MinimumEditorialNoteLength &&
+        j.LastVerifiedUtc.HasValue && j.LastVerifiedUtc >= verifiedAfterUtc && j.LastVerifiedUtc <= DateTime.UtcNow &&
+        (!j.SourcePostedDate.HasValue || j.SourcePostedDate.Value.Date <= DateTime.UtcNow.Date) &&
         ((j.ApplyLink.StartsWith("https://") && j.ApplyLink.Length > 8) || (j.ApplyLink.StartsWith("http://") && j.ApplyLink.Length > 7)) && !j.ApplyLink.Contains(" ") &&
+        j.ApplyLink.IndexOf("/", j.ApplyLink.IndexOf("://") + 3) >= 0 &&
+        j.ApplyLink.IndexOf("/", j.ApplyLink.IndexOf("://") + 3) < j.ApplyLink.Length - 1 &&
         j.OfficialSourceUrl != null && ((j.OfficialSourceUrl.StartsWith("https://") && j.OfficialSourceUrl.Length > 8) || (j.OfficialSourceUrl.StartsWith("http://") && j.OfficialSourceUrl.Length > 7)) && !j.OfficialSourceUrl.Contains(" ") &&
         j.Eligibility != null && j.Eligibility.Trim().Length >= MinimumEligibilityLength &&
-        JobCategories.All.Contains(j.Category) && JobSourceTypes.All.Contains(j.SourceType ?? "") &&
+        JobCategories.All.Contains(j.Category) && JobSourceTypes.All.Contains(j.SourceType ?? "") && j.SourceType != JobSourceTypes.Other &&
         !j.ApplyLink.Contains("@") && j.OfficialSourceUrl != null && !j.OfficialSourceUrl.Contains("@") &&
         !(j.WalkInStartDate.HasValue && j.WalkInEndDate.HasValue && j.WalkInEndDate < j.WalkInStartDate) &&
         !(j.ApplicationInstructions!.ToLower().Contains("candidates are advised to read the official notification") ||
@@ -75,11 +79,19 @@ public static class JobQuality
         j.SelectionProcess == null || j.SelectionProcess.Trim().Length < MinimumSelectionProcessLength ||
         j.ApplicationInstructions == null || j.ApplicationInstructions.Trim().Length < MinimumApplicationInstructionsLength ||
         j.EditorialNote == null || j.EditorialNote.Trim().Length < MinimumEditorialNoteLength ||
+        !j.LastVerifiedUtc.HasValue || j.LastVerifiedUtc < verifiedAfterUtc || j.LastVerifiedUtc > DateTime.UtcNow ||
+        (j.SourcePostedDate.HasValue && j.SourcePostedDate.Value.Date > DateTime.UtcNow.Date) ||
         ((!j.ApplyLink.StartsWith("https://") || j.ApplyLink.Length <= 8) && (!j.ApplyLink.StartsWith("http://") || j.ApplyLink.Length <= 7)) || j.ApplyLink.Contains(" ") ||
+        j.ApplyLink.IndexOf("/", j.ApplyLink.IndexOf("://") + 3) < 0 ||
+        j.ApplyLink.IndexOf("/", j.ApplyLink.IndexOf("://") + 3) >= j.ApplyLink.Length - 1 ||
         j.OfficialSourceUrl == null || ((!j.OfficialSourceUrl.StartsWith("https://") || j.OfficialSourceUrl.Length <= 8) && (!j.OfficialSourceUrl.StartsWith("http://") || j.OfficialSourceUrl.Length <= 7)) || j.OfficialSourceUrl.Contains(" ") ||
         j.Eligibility == null || j.Eligibility.Trim().Length < MinimumEligibilityLength ||
-        !JobCategories.All.Contains(j.Category) || !JobSourceTypes.All.Contains(j.SourceType ?? "") ||
-        j.ApplyLink.Contains("@") || (j.OfficialSourceUrl != null && j.OfficialSourceUrl.Contains("@")) ||
+        !JobCategories.All.Contains(j.Category) || !JobSourceTypes.All.Contains(j.SourceType ?? "") || j.SourceType == JobSourceTypes.Other ||
+        j.ApplyLink.Contains("@") || j.ApplyLink.ToLower().EndsWith("/careers") ||
+        j.ApplyLink.ToLower().EndsWith("/career") || j.ApplyLink.ToLower().EndsWith("/jobs") ||
+        j.ApplyLink.ToLower().EndsWith("/job") || j.ApplyLink.ToLower().EndsWith("/recruitment") ||
+        j.ApplyLink.ToLower().EndsWith("/vacancies") ||
+        (j.OfficialSourceUrl != null && j.OfficialSourceUrl.Contains("@")) ||
         (j.WalkInStartDate.HasValue && j.WalkInEndDate.HasValue && j.WalkInEndDate < j.WalkInStartDate) ||
         (j.ApplicationInstructions != null && (j.ApplicationInstructions.ToLower().Contains("candidates are advised to read the official notification") ||
           j.ApplicationInstructions.ToLower().Contains("eligible candidates can apply online through the official website") ||
@@ -126,10 +138,15 @@ public static class JobQuality
         AddIf(issues, job.EditorialNote, MinimumEditorialNoteLength, "D2DJobs editorial guidance");
         if (!JobCategories.IsSupported(job.Category)) issues.Add("supported job category");
         if (JobSourceTypes.Normalize(job.SourceType) == null) issues.Add("source type (OfficialEmployer, GovernmentPortal, JobPortal, or Other)");
+        else if (JobSourceTypes.Normalize(job.SourceType) == JobSourceTypes.Other) issues.Add("a source type with a clear employer or recruitment authority");
         if (HasGenericGuidance(job.ApplicationInstructions) || HasGenericGuidance(job.EditorialNote)) issues.Add("generic or repeated editorial/application text needs manual review");
         if (HasMultiJobContent(job)) issues.Add("single-job listing (not a multi-company, listicle, or course promotion)");
         if (!ValidHttpUrl(job.ApplyLink)) issues.Add("valid application URL");
+        else if (IsGenericApplicationUrl(job.ApplyLink)) issues.Add("vacancy-specific application URL (the employer homepage is not enough)");
         if (!ValidHttpUrl(job.OfficialSourceUrl)) issues.Add("valid official source URL");
+        if (!job.LastVerifiedUtc.HasValue) issues.Add("source checked by a person and verification date recorded");
+        else if (job.LastVerifiedUtc.Value < VerificationCutoff(utcNow)) issues.Add("source rechecked within the last 45 days");
+        if (job.LastVerifiedUtc.HasValue && job.LastVerifiedUtc.Value > (utcNow ?? DateTime.UtcNow)) issues.Add("source verification date not in the future");
         if (job.WalkInStartDate.HasValue && job.WalkInEndDate.HasValue && job.WalkInEndDate < job.WalkInStartDate) issues.Add("valid walk-in date range");
         if (job.SourcePostedDate.HasValue && job.SourcePostedDate.Value.Date > DateTime.UtcNow.Date) issues.Add("source posting date not in the future");
         return issues;
@@ -142,6 +159,16 @@ public static class JobQuality
 
     private static bool ValidHttpUrl(string? value) => Uri.TryCreate(value, UriKind.Absolute, out var uri) &&
         uri.Scheme is "https" or "http" && string.IsNullOrEmpty(uri.UserInfo);
+
+    public static bool IsGenericApplicationUrl(string? value)
+    {
+        if (!Uri.TryCreate(value, UriKind.Absolute, out var uri) || uri.Scheme is not ("https" or "http")) return false;
+        var path = uri.AbsolutePath.TrimEnd('/');
+        return path.Length == 0 || path.Equals("/careers", StringComparison.OrdinalIgnoreCase) ||
+            path.Equals("/career", StringComparison.OrdinalIgnoreCase) || path.Equals("/jobs", StringComparison.OrdinalIgnoreCase) ||
+            path.Equals("/job", StringComparison.OrdinalIgnoreCase) || path.Equals("/recruitment", StringComparison.OrdinalIgnoreCase) ||
+            path.Equals("/vacancies", StringComparison.OrdinalIgnoreCase);
+    }
 
     public static bool HasGenericGuidance(string? value)
     {

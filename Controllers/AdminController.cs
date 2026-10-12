@@ -62,8 +62,8 @@ public class AdminController(ApplicationDbContext db, IWebHostEnvironment enviro
     public async Task<IActionResult> Index(string? search, string? category, string? status, int page = 1, int recentDays = 0, DateTime? addedFrom = null, DateTime? addedTo = null, string dateOrder = "newest")
     {
         var today = DateTime.Today;
-        var totals = await db.Jobs.GroupBy(j => 1).Select(g => new { Total = g.Count(), Featured = g.Count(j => j.IsFeatured), Active = g.Count(j => j.IsActive && (j.ExpiryDate == null || j.ExpiryDate >= today) && (j.SourcePostedDate ?? j.PostedDate).Date > today.AddDays(-30)), Expired = g.Count(j => (j.ExpiryDate < today || (j.SourcePostedDate ?? j.PostedDate).Date <= today.AddDays(-30))) }).FirstOrDefaultAsync();
-        ViewBag.TotalJobs = totals?.Total ?? 0; ViewBag.FeaturedJobs = totals?.Featured ?? 0; ViewBag.ActiveJobs = totals?.Active ?? 0; ViewBag.ExpiredJobs = totals?.Expired ?? 0;
+        var totals = await db.Jobs.GroupBy(j => 1).Select(g => new { Total = g.Count(), Featured = g.Count(j => j.IsFeatured), Active = g.Count(j => j.IsActive && (j.AvailableFrom == null || j.AvailableFrom <= today) && (j.ExpiryDate == null || j.ExpiryDate >= today) && (j.SourcePostedDate ?? j.PostedDate).Date > today.AddDays(-30)), Drafts = g.Count(j => !j.IsActive && (j.ExpiryDate == null || j.ExpiryDate >= today) && (j.SourcePostedDate ?? j.PostedDate).Date > today.AddDays(-30)), Expired = g.Count(j => (j.ExpiryDate < today || (j.SourcePostedDate ?? j.PostedDate).Date <= today.AddDays(-30))) }).FirstOrDefaultAsync();
+        ViewBag.TotalJobs = totals?.Total ?? 0; ViewBag.FeaturedJobs = totals?.Featured ?? 0; ViewBag.ActiveJobs = totals?.Active ?? 0; ViewBag.DraftJobs = totals?.Drafts ?? 0; ViewBag.ExpiredJobs = totals?.Expired ?? 0;
         var jobs = db.Jobs.AsNoTracking(); search = search?.Trim();
         if (!string.IsNullOrEmpty(search)) jobs = jobs.Where(j => j.Title.Contains(search) || j.CompanyName.Contains(search) || j.Location.Contains(search) || j.Skills.Contains(search));
         if (!string.IsNullOrEmpty(category)) jobs = jobs.Where(j => j.Category == category);
@@ -72,6 +72,10 @@ public class AdminController(ApplicationDbContext db, IWebHostEnvironment enviro
         var verifiedActive = db.Jobs.AsNoTracking()
             .Where(j => j.IsActive && (j.AvailableFrom == null || j.AvailableFrom <= today) && (j.ExpiryDate == null || j.ExpiryDate >= today) && (j.SourcePostedDate ?? j.PostedDate).Date > today.AddDays(-30))
             .Where(JobQuality.ReadyForIndex(verificationCutoffForDuplicates));
+        var duplicateGuidanceIds = verifiedActive.Where(j => verifiedActive.Any(other => other.Id != j.Id &&
+                ((j.ApplicationInstructions != null && j.ApplicationInstructions.Trim() != "" && other.ApplicationInstructions!.Trim() == j.ApplicationInstructions.Trim()) ||
+                 (j.EditorialNote != null && j.EditorialNote.Trim() != "" && other.EditorialNote!.Trim() == j.EditorialNote.Trim()))))
+            .Select(j => j.Id);
         // Review-only detection: never delete or deactivate automatically.
         var recentJobsForDuplicates = db.Jobs.AsNoTracking()
             .Where(j => (j.ExpiryDate == null || j.ExpiryDate >= today) &&
@@ -91,6 +95,18 @@ public class AdminController(ApplicationDbContext db, IWebHostEnvironment enviro
                     )
                 )))
             .Select(j => j.Id);
+        var reviewableJobs = db.Jobs.AsNoTracking().Where(j => j.ExpiryDate == null || j.ExpiryDate >= today);
+        ViewBag.ReviewJobs = await reviewableJobs.Where(JobQuality.NeedsReview(verificationCutoffForDuplicates)).CountAsync();
+        ViewBag.DuplicateCandidates = await suspectedDuplicateIds.Union(duplicateGuidanceIds).CountAsync();
+        ViewBag.MissingVerifiedSources = await reviewableJobs.Where(j => !j.LastVerifiedUtc.HasValue || j.LastVerifiedUtc < verificationCutoffForDuplicates).CountAsync();
+        ViewBag.BrokenApplicationUrls = await reviewableJobs.Where(j =>
+            (!j.ApplyLink.StartsWith("https://") && !j.ApplyLink.StartsWith("http://")) || j.ApplyLink.Contains(" ") || j.ApplyLink.Contains("@") ||
+            j.ApplyLink.ToLower().EndsWith("/careers") || j.ApplyLink.ToLower().EndsWith("/career") || j.ApplyLink.ToLower().EndsWith("/jobs") ||
+            j.ApplyLink.ToLower().EndsWith("/job") || j.ApplyLink.ToLower().EndsWith("/recruitment") || j.ApplyLink.ToLower().EndsWith("/vacancies") ||
+            j.ApplyLink.IndexOf("/", j.ApplyLink.IndexOf("://") + 3) < 0 ||
+            j.ApplyLink.IndexOf("/", j.ApplyLink.IndexOf("://") + 3) >= j.ApplyLink.Length - 1)
+            .CountAsync();
+        ViewBag.IndexEligibleJobs = await verifiedActive.Where(j => !suspectedDuplicateIds.Contains(j.Id) && !duplicateGuidanceIds.Contains(j.Id)).CountAsync();
         if (status == "Needs review")
         {
             var duplicateIds = db.Jobs.AsNoTracking()
@@ -174,25 +190,46 @@ public class AdminController(ApplicationDbContext db, IWebHostEnvironment enviro
         try
         {
             await using var stream = input.File.OpenReadStream();
-            var errors = input.Errors;
-            var jobs = excelImporter.Read(stream, errors);
-            if (errors.Count > 0 || jobs.Count == 0)
+            var jobs = excelImporter.Read(stream, input.Errors, input.Warnings);
+            input.RejectedCount = input.Errors.Select(error => System.Text.RegularExpressions.Regex.Match(error, @"^Row (\d+):"))
+                .Where(match => match.Success).Select(match => match.Groups[1].Value).Distinct().Count();
+            var workbookErrors = input.Errors.Any(error => !error.StartsWith("Row ", StringComparison.Ordinal));
+            if (workbookErrors || jobs.Count == 0)
             {
-                if (jobs.Count == 0 && errors.Count == 0) errors.Add("The workbook did not contain any data rows.");
+                if (jobs.Count == 0 && input.Errors.Count == 0) input.Errors.Add("The workbook did not contain any data rows.");
+                input.Summary = $"Accepted {jobs.Count}; rejected {input.RejectedCount}; saved 0 drafts.";
                 return View(input);
             }
 
+            var importedLinks = jobs.Select(job => job.ApplyLink).Where(link => !string.IsNullOrWhiteSpace(link)).Distinct().ToArray();
+            var knownLinks = await db.Jobs.AsNoTracking().Where(job => importedLinks.Contains(job.ApplyLink))
+                .Select(job => job.ApplyLink).ToListAsync(cancellationToken);
+            var companies = jobs.Select(job => job.CompanyName.Trim().ToLowerInvariant()).Where(name => name != "").Distinct().ToArray();
+            var knownCompanyJobs = await db.Jobs.AsNoTracking().Where(job => companies.Contains(job.CompanyName.Trim().ToLower()))
+                .Select(job => new { job.CompanyName, job.Role, job.Location }).ToListAsync(cancellationToken);
+            var seenLinks = new HashSet<string>(knownLinks, StringComparer.OrdinalIgnoreCase);
+            var seenRoles = new HashSet<string>(knownCompanyJobs.Select(job => $"{job.CompanyName.Trim()}|{job.Role.Trim()}|{job.Location.Trim()}"), StringComparer.OrdinalIgnoreCase);
             foreach (var job in jobs)
             {
                 job.Slug = Slug(job.Title);
                 job.PostedDate = DateTime.Now;
                 job.ImportedUtc = DateTime.UtcNow;
                 job.IsActive = false;
+                foreach (var reason in JobQuality.ReviewIssues(job))
+                    input.Warnings.Add($"{job.Title}: {reason}.");
+                var roleKey = $"{job.CompanyName.Trim()}|{job.Role.Trim()}|{job.Location.Trim()}";
+                if ((!string.IsNullOrWhiteSpace(job.ApplyLink) && !seenLinks.Add(job.ApplyLink)) ||
+                    (job.CompanyName.Trim() != "" && job.Role.Trim() != "" && job.Location.Trim() != "" && !seenRoles.Add(roleKey)))
+                    input.Warnings.Add($"{job.Title}: possible duplicate listing; compare the vacancy ID and dates with the existing posting.");
+                if (job.ApplyLink.Length > 0) seenLinks.Add(job.ApplyLink);
+                if (job.CompanyName.Trim() != "" && job.Role.Trim() != "" && job.Location.Trim() != "") seenRoles.Add(roleKey);
             }
             await db.Jobs.AddRangeAsync(jobs, cancellationToken);
             await db.SaveChangesAsync(cancellationToken);
-            TempData["Notice"] = $"{jobs.Count} job(s) imported as inactive drafts. Review and publish approved jobs from Admin.";
-            return RedirectToAction(nameof(Index));
+            input.ImportedCount = jobs.Count;
+            input.DraftCount = jobs.Count;
+            input.Summary = $"Accepted {jobs.Count}; rejected {input.RejectedCount}; saved {input.DraftCount} inactive draft(s). No source was marked verified.";
+            return View(input);
         }
         catch (InvalidDataException)
         {
@@ -275,7 +312,10 @@ public class AdminController(ApplicationDbContext db, IWebHostEnvironment enviro
         b.ApplicationInstructions = a.ApplicationInstructions; b.DocumentsRequired = a.DocumentsRequired; b.EditorialNote = a.EditorialNote;
         b.SourceType = JobSourceTypes.Normalize(a.SourceType);
         b.SourcePostedDate = a.SourcePostedDate; b.WalkInDate = a.WalkInDate; b.WalkInStartDate = a.WalkInStartDate; b.WalkInEndDate = a.WalkInEndDate;
-        b.WalkInVenue = a.WalkInVenue; b.OfficialSourceUrl = a.OfficialSourceUrl; b.LastVerifiedUtc = a.LastVerifiedUtc;
+        b.WalkInVenue = a.WalkInVenue; b.OfficialSourceUrl = a.OfficialSourceUrl;
+        b.LastVerifiedUtc = a.LastVerifiedUtc.HasValue
+            ? DateTime.SpecifyKind(a.LastVerifiedUtc.Value.Date, DateTimeKind.Utc)
+            : null;
     }
     private async Task ApplyPublishingGate(Job job)
     {
@@ -285,12 +325,22 @@ public class AdminController(ApplicationDbContext db, IWebHostEnvironment enviro
         {
             var application = NormalizeGuidance(job.ApplicationInstructions);
             var editorial = NormalizeGuidance(job.EditorialNote);
-            var cutoff = JobQuality.VerificationCutoff();
-            var existingGuidance = await db.Jobs.AsNoTracking().Where(JobQuality.ReadyForIndex(cutoff)).Where(other => other.Id != job.Id && other.IsActive &&
-                (other.AvailableFrom == null || other.AvailableFrom <= DateTime.Today) && (other.ExpiryDate == null || other.ExpiryDate >= DateTime.Today) && (other.SourcePostedDate ?? other.PostedDate).Date > DateTime.Today.AddDays(-30))
-                .Select(other => new { other.ApplicationInstructions, other.EditorialNote }).ToListAsync();
-            var duplicate = existingGuidance.Any(other => NormalizeGuidance(other.ApplicationInstructions) == application || NormalizeGuidance(other.EditorialNote) == editorial);
-            if (duplicate) issues.Add("unique, job-specific application and editorial guidance");
+            var company = job.CompanyName.Trim().ToLowerInvariant();
+            var role = job.Role.Trim().ToLowerInvariant();
+            var location = job.Location.Trim().ToLowerInvariant();
+            var duplicate = await db.Jobs.AsNoTracking().Where(other => other.Id != job.Id &&
+                    (other.ExpiryDate == null || other.ExpiryDate >= DateTime.Today) &&
+                    (other.SourcePostedDate ?? other.PostedDate).Date > DateTime.Today.AddDays(-30))
+                .AnyAsync(other =>
+                    (job.ApplyLink != "" && other.ApplyLink == job.ApplyLink) ||
+                    (company != "" && role != "" && location != "" &&
+                     other.CompanyName.Trim().ToLower() == company && other.Role.Trim().ToLower() == role &&
+                     other.Location.Trim().ToLower() == location) ||
+                    (job.ApplicationInstructions != null && job.ApplicationInstructions.Trim() != "" &&
+                     other.ApplicationInstructions != null && other.ApplicationInstructions.Trim() == application) ||
+                    (job.EditorialNote != null && job.EditorialNote.Trim() != "" &&
+                     other.EditorialNote != null && other.EditorialNote.Trim() == editorial));
+            if (duplicate) issues.Add("possible duplicate job or reused application/editorial text must be checked");
         }
         if (issues.Count == 0) return;
         job.IsActive = false;

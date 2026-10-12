@@ -4,11 +4,13 @@
 <section class="admin-panel">
     <h2>Upload workbook</h2>
     <p>Use the first worksheet. The first row must contain <strong>Title</strong>. Other supported columns include CompanyName, Category, SourceType, SourcePostedDate (or PostedDate), SubCategory, Role, Location, Experience, Salary, JobType, Qualification, Skills, Description, ApplyLink, IsFeatured, ExpiryDate, BatchFrom, BatchTo, Eligibility, SelectionProcess, ApplicationInstructions, DocumentsRequired, EditorialNote, WalkInDate, WalkInStartDate, WalkInEndDate, WalkInVenue, OfficialSourceUrl and LastVerifiedUtc. Imported jobs are saved as inactive drafts. Verify the source and publish approved jobs from the admin dashboard. Current, non-expired jobs appear on the homepage. Source dates are never inferred from the import date.</p>
-    <p class="muted">Rows are validated before anything is saved. If a row fails validation, fix the workbook and upload it again.</p>
+    <p class="muted">Malformed rows are rejected; valid rows are saved as inactive drafts. Quality and duplicate warnings require a person to review the source before publication. A LastVerifiedUtc value in Excel is ignored.</p>
+    @if (!string.IsNullOrWhiteSpace(Model.Summary)) { <div class="notice" role="status"><strong>Import summary:</strong> @Model.Summary</div> }
     <form method="post" enctype="multipart/form-data">
         <div asp-validation-summary="All" class="validation-summary" role="alert"></div>
         <div class="admin-field"><label asp-for="File">Excel workbook (.xlsx)</label><input asp-for="File" type="file" accept=".xlsx,application/vnd.openxmlformats-officedocument.spreadsheetml.sheet" required /></div>
-        @if (Model.Errors.Count > 0) { <div class="validation-summary" role="alert"><ul>@foreach (var error in Model.Errors) { <li>@error</li> }</ul></div> }
+        @if (Model.Errors.Count > 0) { <div class="validation-summary" role="alert"><strong>Rejected rows or workbook errors</strong><ul>@foreach (var error in Model.Errors) { <li>@error</li> }</ul></div> }
+        @if (Model.Warnings.Count > 0) { <div class="admin-panel"><h3>Review warnings</h3><p>Automated checks identify issues for review; they do not confirm job facts.</p><ul>@foreach (var warning in Model.Warnings) { <li>@warning</li> }</ul></div> }
         <button class="primary-button" type="submit">Validate and import jobs</button>
     </form>
 </section>

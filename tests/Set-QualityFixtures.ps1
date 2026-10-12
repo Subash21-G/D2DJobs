@@ -7,7 +7,7 @@ try {
     $connection.Open()
     $command = $connection.CreateCommand()
     $command.CommandText = @'
-UPDATE Jobs SET IsActive = 1 WHERE Title IN ('QUALITY Duplicate', 'QUALITY Thin', 'QUALITY Stale');
+UPDATE Jobs SET IsActive = 1 WHERE Title IN ('QUALITY Duplicate', 'QUALITY Thin', 'QUALITY Stale', 'QUALITY GenericApplyUrl');
 UPDATE Jobs SET AvailableFrom = DATEADD(day, 5, GETDATE()) WHERE Title = 'QUALITY Scheduled';
 SELECT Title, Slug, IsActive FROM Jobs WHERE Title LIKE 'QUALITY %';
 '@

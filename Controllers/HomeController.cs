@@ -25,7 +25,22 @@ public class HomeController : Controller
     }
     private IQueryable<Job> AvailableJobs() => _context.Jobs.AsNoTracking()
         .Where(j => j.IsActive && (j.AvailableFrom == null || j.AvailableFrom <= DateTime.Today) && (j.ExpiryDate == null || j.ExpiryDate >= DateTime.Today) && (j.SourcePostedDate ?? j.PostedDate).Date > DateTime.Today.AddDays(-30));
-    private IQueryable<Job> DiscoverableJobs() => AvailableJobs();
+    private IQueryable<Job> DiscoverableJobs()
+    {
+        var recent = AvailableJobs();
+        var checkedJobs = recent.Where(JobQuality.ReadyForIndex(JobQuality.VerificationCutoff()));
+        return checkedJobs.Where(job => !recent.Any(other => other.Id != job.Id &&
+            (
+                (job.ApplyLink != "" && job.ApplyLink == other.ApplyLink) ||
+                (job.CompanyName.Trim().ToLower() == other.CompanyName.Trim().ToLower() &&
+                 job.Role.Trim() != "" && job.Role.Trim().ToLower() == other.Role.Trim().ToLower() &&
+                 job.Location.Trim() != "" && job.Location.Trim().ToLower() == other.Location.Trim().ToLower()) ||
+                (job.ApplicationInstructions != null && job.ApplicationInstructions.Trim() != "" &&
+                 job.ApplicationInstructions.Trim() == other.ApplicationInstructions!.Trim()) ||
+                (job.EditorialNote != null && job.EditorialNote.Trim() != "" &&
+                 job.EditorialNote.Trim() == other.EditorialNote!.Trim())
+            )));
+    }
     private static IQueryable<Job> CategoryJobs(IQueryable<Job> query, string category) => category switch
     {
         "Off Campus" => query.Where(j => j.Category == "Off Campus" || j.SubCategory == "Off Campus Drive"),
@@ -87,13 +102,10 @@ public class HomeController : Controller
             _ => "Browse current fresher jobs, off-campus drives and internships in India. Filter openings by graduation batch, qualification and location."
         };
         ViewData["Canonical"] = Origin + (categorySlug != null ? "/jobs/" + categorySlug : ViewData["AllJobs"] is true ? "/jobs" : "/");
-        // Let visitors see every currently active, in-date listing. Keep the stricter
-        // editorial gate separately for search indexing, rich results and advertising.
-        var available = AvailableJobs();
+        // Public discovery only includes listings with current editorial and source checks.
+        var available = DiscoverableJobs();
         var jobs = ApplyDiscoveryFilters(available, search, category, location, experience, qualification, batch);
-        var publishableJobs = ApplyDiscoveryFilters(DiscoverableJobs(), search, category, location, experience, qualification, batch);
         var total = await jobs.CountAsync();
-        var publishableTotal = await publishableJobs.CountAsync();
         var pages = (int)Math.Ceiling(total / (double)pageSize);
         page = Math.Clamp(page, 1, Math.Max(1, pages));
         sort = sort is "popular" or "closing" ? sort : "latest";
@@ -105,11 +117,10 @@ public class HomeController : Controller
         };
         var result = await ordered.Skip((page - 1) * pageSize).Take(pageSize).ToListAsync();
         ViewBag.CurrentPage = page; ViewBag.TotalPages = pages; ViewBag.ResultCount = total;
-        var resultIds = result.Select(job => job.Id).ToArray();
-        var publishableOnPage = resultIds.Length == 0 ? 0 : await publishableJobs.CountAsync(job => resultIds.Contains(job.Id));
-        var allResultsPublishable = result.Count > 0 && publishableOnPage == result.Count;
-        ViewData["ShowAds"] = allResultsPublishable;
-        ViewData["NoIndex"] = total == 0 || publishableTotal != total;
+        ViewData["ShowAds"] = result.Count > 0;
+        // Clean homepage and category routes keep their editorial value when there are no open jobs.
+        // Search and pagination URLs are already noindexed by _SeoMeta.
+        ViewData["NoIndex"] = false;
         ViewBag.Search = search; ViewBag.Category = category; ViewBag.Location = location; ViewBag.Experience = experience; ViewBag.Sort = sort;
         ViewBag.Qualification = qualification;
         var totals = await available.GroupBy(j => 1).Select(g => new {
@@ -200,14 +211,16 @@ public class HomeController : Controller
         if (job == null) return MissingJob();
         if (job.AvailableFrom > DateTime.Today) return MissingJob();
         var expired = job.IsExpired(DateTime.Today);
+        var discoverable = !expired && await DiscoverableJobs().AnyAsync(j => j.Id == job.Id);
         if (!IsAdminSession && !expired)
         {
             await _context.Jobs.Where(j => j.Id == job.Id).ExecuteUpdateAsync(set => set.SetProperty(j => j.ViewsCount, j => j.ViewsCount + 1));
             job.ViewsCount++;
         }
         ViewData["Canonical"] = Origin + Url.RouteUrl("job-details", new { slug = job.Slug });
-        ViewData["NoIndex"] = expired;
-        ViewData["ShowAds"] = !expired;
+        ViewData["NoIndex"] = !discoverable;
+        ViewData["ShowAds"] = discoverable;
+        ViewData["ShowJobPosting"] = discoverable && job.SourcePostedDate.HasValue;
         ViewBag.IsExpired = expired;
         ViewBag.RelatedJobs = await DiscoverableJobs().Where(j => j.Category == job.Category && j.Id != job.Id).OrderByDescending(j => j.PostedDate).Take(4).ToListAsync();
         ViewBag.IsSaved = ReadSavedIds().Contains(job.Id);
@@ -327,21 +340,19 @@ public class HomeController : Controller
     public async Task<IActionResult> Sitemap()
     {
         var indexable = DiscoverableJobs();
-        var jobs = await indexable.OrderByDescending(j => j.PostedDate).Select(j => new { j.Slug, j.PostedDate, j.LastVerifiedUtc }).ToListAsync();
+        var jobs = await indexable.OrderByDescending(j => j.PostedDate).Select(j => new { j.Slug }).ToListAsync();
         XNamespace ns = "http://www.sitemaps.org/schemas/sitemap/0.9";
         var origin = Origin;
         var root = new XElement(ns + "urlset");
-        var staticPaths = new List<string> { "/jobs", "/Home/About", "/editorial-policy", "/career-guide", "/resources", "/Home/Contact", "/Home/PrivacyPolicy", "/Home/Terms", "/Home/Disclaimer", "/Home/Advertise", "/job-alerts", "/resume-builder" };
-        if (jobs.Count > 0) staticPaths.Insert(0, "/");
+        var staticPaths = new List<string> { "/", "/jobs", "/Home/About", "/editorial-policy", "/career-guide", "/resources", "/Home/Contact", "/Home/PrivacyPolicy", "/Home/Terms", "/Home/Disclaimer", "/Home/Advertise", "/job-alerts", "/resume-builder" };
         foreach (var path in staticPaths)
             root.Add(new XElement(ns + "url", new XElement(ns + "loc", origin + path)));
         foreach (var article in CareerResources.All)
             root.Add(new XElement(ns + "url", new XElement(ns + "loc", origin + "/resources/" + article.Slug), new XElement(ns + "lastmod", article.Updated.ToString("yyyy-MM-dd"))));
         foreach (var category in JobCategories.All)
-            if (await CategoryJobs(indexable, category).AnyAsync())
-                root.Add(new XElement(ns + "url", new XElement(ns + "loc", origin + "/jobs/" + JobCategories.Slug(category))));
+            root.Add(new XElement(ns + "url", new XElement(ns + "loc", origin + "/jobs/" + JobCategories.Slug(category))));
         foreach (var job in jobs.Where(j => !string.IsNullOrEmpty(j.Slug)))
-            root.Add(new XElement(ns + "url", new XElement(ns + "loc", origin + "/job/" + Uri.EscapeDataString(job.Slug!)), new XElement(ns + "lastmod", (job.LastVerifiedUtc ?? job.PostedDate).ToString("yyyy-MM-dd"))));
+            root.Add(new XElement(ns + "url", new XElement(ns + "loc", origin + "/job/" + Uri.EscapeDataString(job.Slug!))));
         return Content(new XDocument(new XDeclaration("1.0", "utf-8", null), root).ToString(), "application/xml");
     }
 }

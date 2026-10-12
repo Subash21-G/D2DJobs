@@ -37,7 +37,7 @@ public sealed class ExcelJobImporter
         ["last verified"] = nameof(Job.LastVerifiedUtc)
     };
 
-    public List<Job> Read(Stream input, List<string> errors)
+    public List<Job> Read(Stream input, List<string> errors, List<string>? warnings = null)
     {
         using var archive = new ZipArchive(input, ZipArchiveMode.Read, leaveOpen: false);
         var shared = ReadSharedStrings(archive);
@@ -73,6 +73,9 @@ public sealed class ExcelJobImporter
                 if (headers.TryGetValue(index, out var property)) values[property] = CellValue(cell, shared, ns).Trim();
             }
             if (values.Count == 0 || values.Values.All(string.IsNullOrWhiteSpace)) continue;
+
+            if (!string.IsNullOrWhiteSpace(Get(values, nameof(Job.LastVerifiedUtc))))
+                warnings?.Add($"Row {rowNumber + 1}: LastVerifiedUtc was ignored. Check the source in the admin form and record the date there.");
 
             var job = BuildJob(values, rowNumber + 1, errors);
             if (job != null) jobs.Add(job);
@@ -115,7 +118,7 @@ public sealed class ExcelJobImporter
         if (TryDate(values, nameof(Job.WalkInStartDate), rowNumber, errors, out var walkInStart)) job.WalkInStartDate = walkInStart;
         if (TryDate(values, nameof(Job.WalkInEndDate), rowNumber, errors, out var walkInEnd)) job.WalkInEndDate = walkInEnd;
         if (TryDate(values, nameof(Job.SourcePostedDate), rowNumber, errors, out var sourcePosted)) job.SourcePostedDate = sourcePosted;
-        if (TryDate(values, nameof(Job.LastVerifiedUtc), rowNumber, errors, out var verified)) job.LastVerifiedUtc = verified?.ToUniversalTime();
+        // Verification dates are deliberately not trusted from an uploaded workbook.
 
         var validation = new List<System.ComponentModel.DataAnnotations.ValidationResult>();
         if (!System.ComponentModel.DataAnnotations.Validator.TryValidateObject(job, new(job), validation, true))

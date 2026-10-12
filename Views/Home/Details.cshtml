@@ -182,6 +182,10 @@ var breadcrumbSchema = new Dictionary<string, object>
     }
 }
 @if(Uri.TryCreate(Model.OfficialSourceUrl,UriKind.Absolute,out var sourceUri) && sourceUri.Scheme is "http" or "https"){<p><a href="@sourceUri.AbsoluteUri" target="_blank" rel="noopener noreferrer">@sourceLinkLabel &nearr;</a> <span class="muted">(@JobSourceTypes.Label(Model.SourceType))</span></p>}
+@if (Model.LastVerifiedUtc.HasValue)
+{
+    <p class="muted">D2DJobs last checked this source on @Model.LastVerifiedUtc.Value.ToLocalTime().ToString("dd MMM yyyy", System.Globalization.CultureInfo.InvariantCulture).</p>
+}
 <h2 id="how-to-apply">How to apply</h2>@if (canApply) { <div class="description-text">@Model.ApplicationInstructions</div> }
 else if (expired) { <p class="muted">Applications are no longer accepted through this listing.</p> }
 else { <p class="muted">An application link has not been added for this listing. Check the official source above for recruitment updates.</p> }
@@ -194,7 +198,7 @@ else { <span class="application-unavailable">Application link unavailable</span>
 <h2>Share this opportunity</h2><p class="muted">Share a job summary with an Apply here link to this job details page.</p><div class="share-links"><a href="https://wa.me/?text=@shareText" target="_blank" rel="noopener noreferrer">WhatsApp</a><a href="https://t.me/share/url?url=@shareUrl&amp;text=@shareText" target="_blank" rel="noopener noreferrer">Telegram</a><a href="https://www.linkedin.com/sharing/share-offsite/?url=@shareUrl" target="_blank" rel="noopener noreferrer">LinkedIn</a>@if (!string.IsNullOrWhiteSpace(SiteSettings.Value.FacebookUrl)) { <a href="@SiteSettings.Value.FacebookUrl" target="_blank" rel="noopener noreferrer">Facebook</a> }@if (!string.IsNullOrWhiteSpace(SiteSettings.Value.InstagramUrl)) { <a href="@SiteSettings.Value.InstagramUrl" target="_blank" rel="noopener noreferrer">Instagram</a> }@if (!string.IsNullOrWhiteSpace(SiteSettings.Value.LinkedInUrl)) { <a href="@SiteSettings.Value.LinkedInUrl" target="_blank" rel="noopener noreferrer">Our LinkedIn</a> }<button class="secondary-button" type="button" data-copy-link data-copy-text="@sharePlainText">Copy share text</button><span id="copy-status" role="status"></span></div>
 </article><aside class="jobs-sidebar"><section class="sidebar-panel"><div class="panel-heading"><h2>Similar opportunities</h2></div>@if (related.Count == 0) { <p class="muted">Explore all current openings to find your next opportunity.</p> }@foreach (var job in related) { <a class="compact-job" asp-action="Details" asp-route-slug="@job.Slug"><strong>@job.Title</strong><small>@job.CompanyName · @job.Location</small></a> }<a class="details-link" asp-route="category" asp-route-categorySlug="@JobCategories.Slug(Model.Category)">Browse @Model.Category &nearr;</a></section><section class="career-note"><span class="eyebrow">BEFORE YOU APPLY</span><h2>Make your application count.</h2><p>Highlight relevant projects, match your skills to the role and keep your contact details up to date.</p><a asp-action="SavedJobs">Your saved opportunities &nearr;</a></section></aside></div>
 <script type="application/ld+json">@Html.Raw(JsonSerializer.Serialize(breadcrumbSchema))</script>
-@if (!expired) { <script type="application/ld+json">@Html.Raw(JsonSerializer.Serialize(schema))</script> }
+@if (ViewData["ShowJobPosting"] is true) { <script type="application/ld+json">@Html.Raw(JsonSerializer.Serialize(schema))</script> }
 <partial name="_CategoryPreparationGuide" model="CategoryPreparationGuides.ForJob(Model)" />
 
 
