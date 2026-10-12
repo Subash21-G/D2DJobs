@@ -220,6 +220,7 @@ public class HomeController : Controller
         ViewData["Canonical"] = Origin + Url.RouteUrl("job-details", new { slug = job.Slug });
         ViewData["NoIndex"] = !discoverable;
         ViewData["ShowAds"] = discoverable;
+        ViewData["IsDiscoverable"] = discoverable;
         ViewData["ShowJobPosting"] = discoverable && job.SourcePostedDate.HasValue;
         ViewBag.IsExpired = expired;
         ViewBag.RelatedJobs = await DiscoverableJobs().Where(j => j.Category == job.Category && j.Id != job.Id).OrderByDescending(j => j.PostedDate).Take(4).ToListAsync();
@@ -232,7 +233,8 @@ public class HomeController : Controller
     }
     public async Task<IActionResult> ApplyClick(int id)
     {
-        var job = await AvailableJobs().FirstOrDefaultAsync(j => j.Id == id);
+        // Apply actions must use exactly the same approval, freshness and duplicate gate as public discovery.
+        var job = await DiscoverableJobs().FirstOrDefaultAsync(j => j.Id == id);
         if (job == null) return MissingJob();
         if (!Uri.TryCreate(job.ApplyLink, UriKind.Absolute, out var link) || (link.Scheme != Uri.UriSchemeHttps && link.Scheme != Uri.UriSchemeHttp))
         {

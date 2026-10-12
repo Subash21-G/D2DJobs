@@ -23,6 +23,8 @@ const nodePath = require('node:path');
     await page.goto(base + '/Admin/Create');
     const token = await page.locator('[name="__RequestVerificationToken"]').first().inputValue();
     const date = days => new Date(Date.now() + days * 86400000).toISOString().slice(0, 16);
+    const dateOnly = days => new Date(Date.now() + days * 86400000).toISOString().slice(0, 10);
+    const displayDate = value => { const d = new Date(value + 'T00:00:00Z'); return `${String(d.getUTCDate()).padStart(2, '0')} ${d.toLocaleString('en-US', { month: 'short', timeZone: 'UTC' })} ${d.getUTCFullYear()}`; };
     const job = suffix => ({
       __RequestVerificationToken: token, Title: 'QUALITY ' + suffix, CompanyName: 'Isolated Test Employer ' + suffix,
       Category: 'IT Jobs', Role: 'Graduate software engineer ' + suffix, Location: 'Chennai', Qualification: 'Bachelor of Engineering in Computer Science',
@@ -44,8 +46,8 @@ const nodePath = require('node:path');
       const listing = job(suffix);
       if (suffix === 'Second') listing.WalkInDate = '2026-10-20';
       if (suffix === 'Third') { listing.SourcePostedDate = ''; listing.SourceType = 'OfficialEmployer'; }
-      if (suffix === 'Fourth') { listing.SourceType = 'GovernmentPortal'; listing.WalkInStartDate = '2026-10-05T09:00'; listing.WalkInEndDate = '2026-10-06T17:00'; }
-      if (suffix === 'Fifth') listing.SourceType = 'JobPortal';
+      if (suffix === 'Fourth') { listing.SourceType = 'GovernmentPortal'; listing.WalkInStartDate = dateOnly(7) + 'T09:00'; listing.WalkInEndDate = dateOnly(8) + 'T17:00'; }
+      if (suffix === 'Fifth') { listing.SourceType = 'JobPortal'; listing.ApplyLink = 'https://example.invalid/?jobId=isolated-123'; }
       await create(listing);
     }
     await create({ ...job('Original'), Title: 'QUALITY Duplicate' });
@@ -68,6 +70,7 @@ const nodePath = require('node:path');
     const importHtml = await importedResponse.text();
     check(importHtml.includes('Accepted 2; rejected 0; saved 2 inactive draft(s).'), 'Import summary separates accepted, rejected and draft rows');
     check(importHtml.includes('LastVerifiedUtc was ignored') && importHtml.includes('source checked by a person'), 'Import never trusts workbook source verification dates');
+    check(importHtml.includes('Review required before publishing') && importHtml.includes('Review imported drafts'), 'Import summary links to draft review and explains the human publication steps');
     await create({ ...job('UnsupportedCategory'), Category: 'Company Wise Jobs' });
     await create({ ...job('MissingSourceType'), SourceType: '' });
     await create({ ...job('Generic'), ApplicationInstructions: 'Eligible candidates can apply online through the official website. For this particular test vacancy, select its role, upload the required resume and retain the portal confirmation number.' });
@@ -115,11 +118,19 @@ const nodePath = require('node:path');
     check(valid.html.includes('View official employer posting') && valid.html.includes('Apply on company website'), 'Official employer links are labelled accurately');
     check(valid.html.includes('20 Oct 2026') && !valid.html.includes('12:00 AM IST'), 'Date-only walk-in values do not render a midnight time');
     check(hasAd(valid.html), 'Positive control: eligible page renders fake ad configuration');
+    const queryApply = await get(path('Fifth'));
+    check(queryApply.status === 200 && queryApply.html.includes('Continue to application source') && queryApply.html.includes('content="index, follow"'), 'Vacancy-specific query parameter application URL remains publishable');
+    const queryRedirect = await context.request.get(base + '/Home/ApplyClick?id=' + rows.find(row => row.title === 'QUALITY Fifth').id, { maxRedirects: 0 });
+    check(queryRedirect.status() === 302 && queryRedirect.headers().location === 'https://example.invalid/?jobId=isolated-123', 'Approved application redirect preserves its vacancy query parameter');
+    const legacyApply = await context.request.get(base + '/Home/ApplyClick?id=' + rows.find(row => row.title === 'QUALITY Original').id, { maxRedirects: 0 });
+    check(legacyApply.status() === 404, 'Direct ApplyClick request cannot bypass review and duplicate checks');
+    const legacyDetails = await get(path('Original'));
+    check(legacyDetails.html.includes('This listing is under review') && !legacyDetails.html.includes('class="primary-button" href="/Home/ApplyClick'), 'Legacy unverified detail page explains review and has no Apply action');
     const noSourceDate = await get(path('Third'));
     check(noSourceDate.html.includes('Added to D2DJobs') && !noSourceDate.html.includes('"datePosted"'), 'Missing employer posting date is not fabricated in page/schema');
     const government = await get(path('Fourth'));
     check(government.html.includes('View official recruitment notice') && government.html.includes('Apply through official recruitment portal'), 'Government source links use accurate labels');
-    check(government.html.includes('05 Oct 2026') && government.html.includes('06 Oct 2026'), 'Walk-in date range renders both dates');
+    check(government.html.includes(displayDate(dateOnly(7))) && government.html.includes(displayDate(dateOnly(8))), 'Walk-in date range renders both dates');
     const jobPortal = await get(path('Fifth'));
     check(jobPortal.html.includes('View source posting') && jobPortal.html.includes('Continue to application source'), 'Third-party job portal is not labelled as employer source');
     const importedDateTest = await get(path('Imported Date Test'));
@@ -159,6 +170,11 @@ const nodePath = require('node:path');
     const reviewReasons = (await page.locator('.review-reasons').allInnerTexts()).join(' | ');
     check(reviewReasons.includes('supported job category') && reviewReasons.includes('source type') && reviewReasons.includes('generic or repeated') && reviewReasons.includes('single-job listing') && reviewReasons.includes('vacancy-specific application URL'), 'Needs Review shows category, source, generic copy, generic application URLs and multi-job reasons');
     check(reviewReasons.includes('check whether the employer source states a posting date'), 'Needs Review prompts a factual source-date check');
+    await page.goto(base + '/Admin?status=Expired');
+    check((await page.locator('.review-reasons').allInnerTexts()).join(' ').includes('recruitment closing date has passed'), 'Expired review queue explains why the listing needs attention');
+    await page.goto(base + '/Admin');
+    const excludedMetric = await page.locator('.metric').filter({ hasText: 'Active jobs excluded from discovery' }).innerText();
+    check(/Active jobs excluded from discovery\s+5/.test(excludedMetric), 'Admin dashboard estimates the five active fixture listings held out of public discovery: ' + excludedMetric);
     await page.goto(base + '/resources');
     const resourceLinks = [...new Set(await page.locator('a[href^="/resources/"]').evaluateAll(links => links.map(link => link.getAttribute('href'))))];
     check(resourceLinks.length > 0, 'Career guides discoverable');

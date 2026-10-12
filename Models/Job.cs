@@ -82,6 +82,7 @@ namespace JobForFresher.Models
 
         public bool IsExpired(DateTime today) =>
             ExpiryDate?.Date < today.Date ||
+            (WalkInEndDate ?? WalkInDate)?.Date < today.Date ||
             (SourcePostedDate ?? PostedDate).Date.AddDays(30) <= today.Date;
     }
 }

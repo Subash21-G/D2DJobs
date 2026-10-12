@@ -36,9 +36,17 @@ public static class JobQuality
         j.EditorialNote != null && j.EditorialNote.Trim().Length >= MinimumEditorialNoteLength &&
         j.LastVerifiedUtc.HasValue && j.LastVerifiedUtc >= verifiedAfterUtc && j.LastVerifiedUtc <= DateTime.UtcNow &&
         (!j.SourcePostedDate.HasValue || j.SourcePostedDate.Value.Date <= DateTime.UtcNow.Date) &&
+        (!j.ExpiryDate.HasValue || j.ExpiryDate.Value.Date >= DateTime.UtcNow.Date) &&
+        (j.WalkInEndDate.HasValue ? j.WalkInEndDate.Value.Date >= DateTime.UtcNow.Date : (!j.WalkInDate.HasValue || j.WalkInDate.Value.Date >= DateTime.UtcNow.Date)) &&
         ((j.ApplyLink.StartsWith("https://") && j.ApplyLink.Length > 8) || (j.ApplyLink.StartsWith("http://") && j.ApplyLink.Length > 7)) && !j.ApplyLink.Contains(" ") &&
-        j.ApplyLink.IndexOf("/", j.ApplyLink.IndexOf("://") + 3) >= 0 &&
-        j.ApplyLink.IndexOf("/", j.ApplyLink.IndexOf("://") + 3) < j.ApplyLink.Length - 1 &&
+        (j.ApplyLink.IndexOf("/", j.ApplyLink.IndexOf("://") + 3) < 0 || j.ApplyLink.IndexOf("/", j.ApplyLink.IndexOf("://") + 3) == j.ApplyLink.Length - 1 ||
+         (j.ApplyLink.IndexOf("/", j.ApplyLink.IndexOf("://") + 3) > 0 && j.ApplyLink.IndexOf("/", j.ApplyLink.IndexOf("://") + 3) < j.ApplyLink.Length - 1)) &&
+        (!j.ApplyLink.EndsWith("/") || j.ApplyLink.Contains("?")) &&
+        !(j.ApplyLink.ToLower().EndsWith("/careers") || j.ApplyLink.ToLower().EndsWith("/career") || j.ApplyLink.ToLower().EndsWith("/jobs") || j.ApplyLink.ToLower().EndsWith("/job") || j.ApplyLink.ToLower().EndsWith("/recruitment") || j.ApplyLink.ToLower().EndsWith("/vacancies")) &&
+        !((j.ApplyLink.ToLower().Contains("/careers?") || j.ApplyLink.ToLower().Contains("/career?") || j.ApplyLink.ToLower().Contains("/jobs?") || j.ApplyLink.ToLower().Contains("/job?") || j.ApplyLink.ToLower().Contains("/recruitment?") || j.ApplyLink.ToLower().Contains("/vacancies?")) &&
+          !(j.ApplyLink.ToLower().Contains("?job") || j.ApplyLink.ToLower().Contains("&job") || j.ApplyLink.ToLower().Contains("vacancy") || j.ApplyLink.ToLower().Contains("requisition") || j.ApplyLink.ToLower().Contains("?req=") || j.ApplyLink.ToLower().Contains("&req=") || j.ApplyLink.ToLower().Contains("?id=") || j.ApplyLink.ToLower().Contains("&id="))) &&
+        !((j.ApplyLink.IndexOf("/", j.ApplyLink.IndexOf("://") + 3) < 0 || j.ApplyLink.ToLower().Contains("/?")) &&
+          !(j.ApplyLink.ToLower().Contains("?job") || j.ApplyLink.ToLower().Contains("&job") || j.ApplyLink.ToLower().Contains("vacancy") || j.ApplyLink.ToLower().Contains("requisition") || j.ApplyLink.ToLower().Contains("?req=") || j.ApplyLink.ToLower().Contains("&req=") || j.ApplyLink.ToLower().Contains("?id=") || j.ApplyLink.ToLower().Contains("&id="))) &&
         j.OfficialSourceUrl != null && ((j.OfficialSourceUrl.StartsWith("https://") && j.OfficialSourceUrl.Length > 8) || (j.OfficialSourceUrl.StartsWith("http://") && j.OfficialSourceUrl.Length > 7)) && !j.OfficialSourceUrl.Contains(" ") &&
         j.Eligibility != null && j.Eligibility.Trim().Length >= MinimumEligibilityLength &&
         JobCategories.All.Contains(j.Category) && JobSourceTypes.All.Contains(j.SourceType ?? "") && j.SourceType != JobSourceTypes.Other &&
@@ -80,9 +88,12 @@ public static class JobQuality
         j.ApplicationInstructions == null || j.ApplicationInstructions.Trim().Length < MinimumApplicationInstructionsLength ||
         j.EditorialNote == null || j.EditorialNote.Trim().Length < MinimumEditorialNoteLength ||
         !j.LastVerifiedUtc.HasValue || j.LastVerifiedUtc < verifiedAfterUtc || j.LastVerifiedUtc > DateTime.UtcNow ||
-        (j.SourcePostedDate.HasValue && j.SourcePostedDate.Value.Date > DateTime.UtcNow.Date) ||
+        (j.SourcePostedDate.HasValue && (j.SourcePostedDate.Value.Date > DateTime.UtcNow.Date || j.SourcePostedDate.Value.Date <= DateTime.UtcNow.Date.AddDays(-30))) ||
+        (j.ExpiryDate.HasValue && j.ExpiryDate.Value.Date < DateTime.UtcNow.Date) ||
+        (j.WalkInEndDate.HasValue ? j.WalkInEndDate.Value.Date < DateTime.UtcNow.Date : (j.WalkInDate.HasValue && j.WalkInDate.Value.Date < DateTime.UtcNow.Date)) ||
         ((!j.ApplyLink.StartsWith("https://") || j.ApplyLink.Length <= 8) && (!j.ApplyLink.StartsWith("http://") || j.ApplyLink.Length <= 7)) || j.ApplyLink.Contains(" ") ||
-        j.ApplyLink.IndexOf("/", j.ApplyLink.IndexOf("://") + 3) < 0 ||
+        ((j.ApplyLink.IndexOf("/", j.ApplyLink.IndexOf("://") + 3) < 0 || j.ApplyLink.ToLower().Contains("/?")) &&
+          !(j.ApplyLink.ToLower().Contains("?job") || j.ApplyLink.ToLower().Contains("&job") || j.ApplyLink.ToLower().Contains("vacancy") || j.ApplyLink.ToLower().Contains("requisition") || j.ApplyLink.ToLower().Contains("?req=") || j.ApplyLink.ToLower().Contains("&req=") || j.ApplyLink.ToLower().Contains("?id=") || j.ApplyLink.ToLower().Contains("&id="))) ||
         j.ApplyLink.IndexOf("/", j.ApplyLink.IndexOf("://") + 3) >= j.ApplyLink.Length - 1 ||
         j.OfficialSourceUrl == null || ((!j.OfficialSourceUrl.StartsWith("https://") || j.OfficialSourceUrl.Length <= 8) && (!j.OfficialSourceUrl.StartsWith("http://") || j.OfficialSourceUrl.Length <= 7)) || j.OfficialSourceUrl.Contains(" ") ||
         j.Eligibility == null || j.Eligibility.Trim().Length < MinimumEligibilityLength ||
@@ -91,6 +102,10 @@ public static class JobQuality
         j.ApplyLink.ToLower().EndsWith("/career") || j.ApplyLink.ToLower().EndsWith("/jobs") ||
         j.ApplyLink.ToLower().EndsWith("/job") || j.ApplyLink.ToLower().EndsWith("/recruitment") ||
         j.ApplyLink.ToLower().EndsWith("/vacancies") ||
+        ((j.ApplyLink.ToLower().Contains("/careers?") || j.ApplyLink.ToLower().Contains("/career?") || j.ApplyLink.ToLower().Contains("/jobs?") || j.ApplyLink.ToLower().Contains("/job?") || j.ApplyLink.ToLower().Contains("/recruitment?") || j.ApplyLink.ToLower().Contains("/vacancies?")) &&
+          !(j.ApplyLink.ToLower().Contains("?job") || j.ApplyLink.ToLower().Contains("&job") || j.ApplyLink.ToLower().Contains("vacancy") || j.ApplyLink.ToLower().Contains("requisition") || j.ApplyLink.ToLower().Contains("?req=") || j.ApplyLink.ToLower().Contains("&req=") || j.ApplyLink.ToLower().Contains("?id=") || j.ApplyLink.ToLower().Contains("&id="))) ||
+        (j.ApplyLink.IndexOf("/", j.ApplyLink.IndexOf("://") + 3) < 0 && !j.ApplyLink.Contains("?")) ||
+        (j.ApplyLink.EndsWith("/") && !j.ApplyLink.Contains("?")) ||
         (j.OfficialSourceUrl != null && j.OfficialSourceUrl.Contains("@")) ||
         (j.WalkInStartDate.HasValue && j.WalkInEndDate.HasValue && j.WalkInEndDate < j.WalkInStartDate) ||
         (j.ApplicationInstructions != null && (j.ApplicationInstructions.ToLower().Contains("candidates are advised to read the official notification") ||
@@ -149,6 +164,12 @@ public static class JobQuality
         if (job.LastVerifiedUtc.HasValue && job.LastVerifiedUtc.Value > (utcNow ?? DateTime.UtcNow)) issues.Add("source verification date not in the future");
         if (job.WalkInStartDate.HasValue && job.WalkInEndDate.HasValue && job.WalkInEndDate < job.WalkInStartDate) issues.Add("valid walk-in date range");
         if (job.SourcePostedDate.HasValue && job.SourcePostedDate.Value.Date > DateTime.UtcNow.Date) issues.Add("source posting date not in the future");
+        if (job.SourcePostedDate.HasValue && job.SourcePostedDate.Value.Date <= (utcNow ?? DateTime.UtcNow).Date.AddDays(-30)) issues.Add("recruitment notice is older than 30 days");
+        if (job.ExpiryDate.HasValue && job.ExpiryDate.Value.Date < (utcNow ?? DateTime.UtcNow).Date) issues.Add("recruitment closing date has passed");
+        var walkInEnd = job.WalkInEndDate ?? job.WalkInDate;
+        if (walkInEnd.HasValue && walkInEnd.Value.Date < (utcNow ?? DateTime.UtcNow).Date) issues.Add("walk-in recruitment date has passed");
+        if (!walkInEnd.HasValue && job.IsExpired((utcNow ?? DateTime.UtcNow).Date) && !job.ExpiryDate.HasValue && !job.SourcePostedDate.HasValue)
+            issues.Add("listing is older than 30 days; recheck the source or close the listing");
         return issues;
     }
 
@@ -164,6 +185,14 @@ public static class JobQuality
     {
         if (!Uri.TryCreate(value, UriKind.Absolute, out var uri) || uri.Scheme is not ("https" or "http")) return false;
         var path = uri.AbsolutePath.TrimEnd('/');
+        var hasVacancyQuery = uri.Query.TrimStart('?').Split('&', StringSplitOptions.RemoveEmptyEntries).Any(pair =>
+        {
+            var parts = pair.Split('=', 2);
+            var key = Uri.UnescapeDataString(parts[0].Replace('+', ' '));
+            var queryValue = parts.Length == 2 ? Uri.UnescapeDataString(parts[1].Replace('+', ' ')) : "";
+            return queryValue.Length > 0 && (key.Contains("job", StringComparison.OrdinalIgnoreCase) || key.Contains("vacancy", StringComparison.OrdinalIgnoreCase) || key.Contains("requisition", StringComparison.OrdinalIgnoreCase) || key.Equals("req", StringComparison.OrdinalIgnoreCase) || key.Equals("positionid", StringComparison.OrdinalIgnoreCase) || key.Equals("id", StringComparison.OrdinalIgnoreCase));
+        });
+        if (hasVacancyQuery) return false;
         return path.Length == 0 || path.Equals("/careers", StringComparison.OrdinalIgnoreCase) ||
             path.Equals("/career", StringComparison.OrdinalIgnoreCase) || path.Equals("/jobs", StringComparison.OrdinalIgnoreCase) ||
             path.Equals("/job", StringComparison.OrdinalIgnoreCase) || path.Equals("/recruitment", StringComparison.OrdinalIgnoreCase) ||

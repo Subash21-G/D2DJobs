@@ -7,14 +7,14 @@ try {
     $connection.Open()
     $command = $connection.CreateCommand()
     $command.CommandText = @'
-UPDATE Jobs SET IsActive = 1 WHERE Title IN ('QUALITY Duplicate', 'QUALITY Thin', 'QUALITY Stale', 'QUALITY GenericApplyUrl');
+UPDATE Jobs SET IsActive = 1 WHERE Title IN ('QUALITY Duplicate', 'QUALITY Thin', 'QUALITY Stale', 'QUALITY GenericApplyUrl', 'QUALITY Expired');
 UPDATE Jobs SET AvailableFrom = DATEADD(day, 5, GETDATE()) WHERE Title = 'QUALITY Scheduled';
-SELECT Title, Slug, IsActive FROM Jobs WHERE Title LIKE 'QUALITY %';
+SELECT Id, Title, Slug, IsActive FROM Jobs WHERE Title LIKE 'QUALITY %';
 '@
     $reader = $command.ExecuteReader()
     $rows = @()
     while ($reader.Read()) {
-        $rows += [pscustomobject]@{ title = $reader.GetString(0); slug = $reader.GetString(1); active = $reader.GetBoolean(2) }
+        $rows += [pscustomobject]@{ id = $reader.GetInt32(0); title = $reader.GetString(1); slug = $reader.GetString(2); active = $reader.GetBoolean(3) }
     }
     $reader.Close()
     ConvertTo-Json -InputObject $rows -Compress

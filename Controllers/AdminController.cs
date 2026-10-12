@@ -69,18 +69,15 @@ public class AdminController(ApplicationDbContext db, IWebHostEnvironment enviro
         if (!string.IsNullOrEmpty(category)) jobs = jobs.Where(j => j.Category == category);
         jobs = status switch { "Active" => jobs.Where(j => j.IsActive && (j.ExpiryDate == null || j.ExpiryDate >= today) && (j.SourcePostedDate ?? j.PostedDate).Date > today.AddDays(-30)), "Inactive" => jobs.Where(j => !j.IsActive), "Expired" => jobs.Where(j => (j.ExpiryDate < today || (j.SourcePostedDate ?? j.PostedDate).Date <= today.AddDays(-30))), _ => jobs };
         var verificationCutoffForDuplicates = JobQuality.VerificationCutoff();
-        var verifiedActive = db.Jobs.AsNoTracking()
-            .Where(j => j.IsActive && (j.AvailableFrom == null || j.AvailableFrom <= today) && (j.ExpiryDate == null || j.ExpiryDate >= today) && (j.SourcePostedDate ?? j.PostedDate).Date > today.AddDays(-30))
+        var recentJobsForDuplicates = db.Jobs.AsNoTracking()
+            .Where(j => j.IsActive && (j.AvailableFrom == null || j.AvailableFrom <= today) && (j.ExpiryDate == null || j.ExpiryDate >= today) && (j.SourcePostedDate ?? j.PostedDate).Date > today.AddDays(-30));
+        var verifiedActive = recentJobsForDuplicates
             .Where(JobQuality.ReadyForIndex(verificationCutoffForDuplicates));
-        var duplicateGuidanceIds = verifiedActive.Where(j => verifiedActive.Any(other => other.Id != j.Id &&
+        var duplicateGuidanceIds = verifiedActive.Where(j => recentJobsForDuplicates.Any(other => other.Id != j.Id &&
                 ((j.ApplicationInstructions != null && j.ApplicationInstructions.Trim() != "" && other.ApplicationInstructions!.Trim() == j.ApplicationInstructions.Trim()) ||
                  (j.EditorialNote != null && j.EditorialNote.Trim() != "" && other.EditorialNote!.Trim() == j.EditorialNote.Trim()))))
             .Select(j => j.Id);
         // Review-only detection: never delete or deactivate automatically.
-        var recentJobsForDuplicates = db.Jobs.AsNoTracking()
-            .Where(j => (j.ExpiryDate == null || j.ExpiryDate >= today) &&
-                (j.SourcePostedDate ?? j.PostedDate).Date > today.AddDays(-30));
-
         var suspectedDuplicateIds = recentJobsForDuplicates
             .Where(j => recentJobsForDuplicates.Any(other =>
                 other.Id != j.Id &&
@@ -107,6 +104,7 @@ public class AdminController(ApplicationDbContext db, IWebHostEnvironment enviro
             j.ApplyLink.IndexOf("/", j.ApplyLink.IndexOf("://") + 3) >= j.ApplyLink.Length - 1)
             .CountAsync();
         ViewBag.IndexEligibleJobs = await verifiedActive.Where(j => !suspectedDuplicateIds.Contains(j.Id) && !duplicateGuidanceIds.Contains(j.Id)).CountAsync();
+        ViewBag.PublicDiscoveryExcludedJobs = Math.Max(0, (int)ViewBag.ActiveJobs - (int)ViewBag.IndexEligibleJobs);
         if (status == "Needs review")
         {
             var duplicateIds = db.Jobs.AsNoTracking()
@@ -140,7 +138,7 @@ public class AdminController(ApplicationDbContext db, IWebHostEnvironment enviro
             : jobs.OrderByDescending(j => j.PostedDate).ThenByDescending(j => j.Id);
         var pageJobs = await orderedJobs.Skip((page-1)*20).Take(20).ToListAsync();
         var reviewReasons = new Dictionary<int, string[]>();
-        if (status == "Needs review" && pageJobs.Count > 0)
+        if (status is "Needs review" or "Expired" && pageJobs.Count > 0)
         {
             var pageIds = pageJobs.Select(job => job.Id).ToArray();
             var duplicatePageIds = await db.Jobs.AsNoTracking()
