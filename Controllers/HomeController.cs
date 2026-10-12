@@ -235,7 +235,7 @@ public class HomeController : Controller
     {
         // Apply actions must use exactly the same approval, freshness and duplicate gate as public discovery.
         var job = await DiscoverableJobs().FirstOrDefaultAsync(j => j.Id == id);
-        if (job == null) return MissingJob();
+        if (job == null || JobQuality.ContainsInternalApplicationFields(job.ApplicationInstructions)) return MissingJob();
         if (!Uri.TryCreate(job.ApplyLink, UriKind.Absolute, out var link) || (link.Scheme != Uri.UriSchemeHttps && link.Scheme != Uri.UriSchemeHttp))
         {
             TempData["Notice"] = "The application link is unavailable. Please check back later.";

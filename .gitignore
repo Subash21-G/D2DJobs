@@ -12,3 +12,7 @@ obj/
 .review-build/
 /.vs/
 appsettings.Local.json
+
+*.bak
+*.bak.*
+adsense-code-audit.csv
