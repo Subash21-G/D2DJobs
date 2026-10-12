@@ -122,6 +122,14 @@ public static class JobQuality
           j.EditorialNote.ToLower().Contains("apply through the link provided above") ||
           j.EditorialNote.ToLower().Contains("for more details visit the official website") ||
           j.EditorialNote.ToLower().Contains("keep checking the official website for updates"))) ||
+        (j.Qualification.ToLower().Contains("verify the full qualification requirements") || j.Qualification.ToLower() == "not specified") ||
+        (j.ApplicationInstructions != null &&
+            (j.ApplicationInstructions.ToLower().Contains("open the applylink") ||
+             j.ApplicationInstructions.ToLower().Contains("officialsourceurl"))) ||
+        (j.EditorialNote != null && j.EditorialNote.ToLower().Contains("d2djobs editorial note for")) ||
+        j.Description.ToLower().Contains("related role context: professionals in this type of position commonly") ||
+        j.Title.ToLower().Contains("roles open") ||
+        j.Title.ToLower().Contains("multiple engineering roles") ||
         j.Title.ToLower().Contains("multiple companies") || j.Title.ToLower().Contains("various companies") ||
         j.Title.ToLower().Contains("top 10") || j.Title.ToLower().Contains("best companies") || j.Title.ToLower().Contains("job fair") ||
         j.Title.ToLower().Contains("job placement course") || j.Title.ToLower().Contains("recruitment course") || j.Title.ToLower().Contains("top companies hiring") ||
@@ -133,6 +141,11 @@ public static class JobQuality
         j.Description.ToLower().Contains("multiple openings across companies") || j.Description.ToLower().Contains("course enrollment") ||
         j.Description.ToLower().Contains("course fee") || j.Description.ToLower().Contains("top companies hiring") ||
         j.Description.ToLower().Contains("course for job placement");
+
+    public static bool ContainsInternalApplicationFields(string? value) =>
+        !string.IsNullOrWhiteSpace(value) &&
+        (value.Contains("ApplyLink", StringComparison.OrdinalIgnoreCase) ||
+         value.Contains("OfficialSourceUrl", StringComparison.OrdinalIgnoreCase));
 
     public static bool RequiresReview(Job job, DateTime? utcNow = null) => ReviewIssues(job, utcNow).Count > 0;
 
@@ -151,6 +164,17 @@ public static class JobQuality
         AddIf(issues, job.SelectionProcess, MinimumSelectionProcessLength, "selection process");
         AddIf(issues, job.ApplicationInstructions, MinimumApplicationInstructionsLength, "job-specific application instructions");
         AddIf(issues, job.EditorialNote, MinimumEditorialNoteLength, "D2DJobs editorial guidance");
+        if ((job.Qualification ?? string.Empty).Contains("verify the full qualification requirements", StringComparison.OrdinalIgnoreCase) ||
+            string.Equals(job.Qualification, "Not Specified", StringComparison.OrdinalIgnoreCase))
+            issues.Add("replace generic qualification placeholder with source-verified eligibility or an honest unknown status");
+        if (ContainsInternalApplicationFields(job.ApplicationInstructions))
+            issues.Add("replace ApplyLink/OfficialSourceUrl field names with real candidate-facing application instructions");
+        if ((job.EditorialNote ?? "").Contains("D2DJobs editorial note for", StringComparison.OrdinalIgnoreCase))
+            issues.Add("replace templated editorial note with genuinely useful, original vacancy-specific guidance");
+        if ((job.Description ?? string.Empty).Contains("related role context: professionals in this type of position commonly", StringComparison.OrdinalIgnoreCase))
+            issues.Add("verify responsibilities and remove generic boilerplate copied across job pages");
+        if (job.Title.Contains("roles open", StringComparison.OrdinalIgnoreCase))
+            issues.Add("review multi-role advert and create individually verified vacancy pages where appropriate");
         if (!JobCategories.IsSupported(job.Category)) issues.Add("supported job category");
         if (JobSourceTypes.Normalize(job.SourceType) == null) issues.Add("source type (OfficialEmployer, GovernmentPortal, JobPortal, or Other)");
         else if (JobSourceTypes.Normalize(job.SourceType) == JobSourceTypes.Other) issues.Add("a source type with a clear employer or recruitment authority");

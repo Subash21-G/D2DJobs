@@ -6,7 +6,8 @@ var related = ViewBag.RelatedJobs as List<Job> ?? new();
 bool saved = ViewBag.IsSaved == true;
 bool expired = ViewBag.IsExpired == true;
 bool discoverable = ViewData["IsDiscoverable"] is true;
-bool canApply = discoverable && !expired && Uri.TryCreate(Model.ApplyLink, UriKind.Absolute, out var applyUri) && (applyUri.Scheme == "https" || applyUri.Scheme == "http");
+bool internalInstructions = JobQuality.ContainsInternalApplicationFields(Model.ApplicationInstructions);
+bool canApply = discoverable && !expired && !internalInstructions && Uri.TryCreate(Model.ApplyLink, UriKind.Absolute, out var applyUri) && (applyUri.Scheme == "https" || applyUri.Scheme == "http");
 string reportSubject = Uri.EscapeDataString("Report job listing: " + Model.Title);
 string reportBody = Uri.EscapeDataString($"Listing: {Context.Request.Scheme}://{Context.Request.Host}/job/{Model.Slug}\n\nIssue (expired, incorrect details, broken link or other):\n\nDetails:");
 // Use the same canonical job URL for sharing and structured data.
@@ -188,10 +189,12 @@ else if (!discoverable) { <div class="application-note"><strong>This listing is 
 {
     <p class="muted">D2DJobs last checked this source on @Model.LastVerifiedUtc.Value.ToLocalTime().ToString("dd MMM yyyy", System.Globalization.CultureInfo.InvariantCulture).</p>
 }
-<h2 id="how-to-apply">How to apply</h2>@if (canApply) { <div class="description-text">@Model.ApplicationInstructions</div> }
+<h2 id="how-to-apply">How to apply</h2>
+@if (internalInstructions) { <p class="muted">Application steps are being checked by our editors. Confirm the specific vacancy and instructions on the linked recruitment source before applying.</p> }
+else if (canApply) { <div class="description-text">@Model.ApplicationInstructions</div> }
 else if (expired) { <p class="muted">Applications are no longer accepted through this listing.</p> }
 else if (!discoverable) { <p class="muted">This historical listing is under review. Please use the official source link above to check current recruitment details.</p> }
-else { <p class="muted">An application link has not been added for this listing. Check the official source above for recruitment updates.</p> }
+else { <p class="muted">The application action is unavailable. Check the linked recruitment source for current information.</p> }
 <div class="apply-actions">
 @if (canApply) { <a class="primary-button" asp-action="ApplyClick" asp-route-id="@Model.Id" target="_blank" rel="noopener noreferrer">@applyLinkLabel &nearr;</a> }
 else if (!discoverable && !expired) { <span class="application-unavailable">Application temporarily unavailable while this listing is reviewed</span> }
