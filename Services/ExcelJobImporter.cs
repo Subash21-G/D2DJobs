@@ -76,6 +76,8 @@ public sealed class ExcelJobImporter
 
             if (!string.IsNullOrWhiteSpace(Get(values, nameof(Job.LastVerifiedUtc))))
                 warnings?.Add($"Row {rowNumber + 1}: LastVerifiedUtc was ignored. Check the source in the admin form and record the date there.");
+            if (!string.IsNullOrWhiteSpace(Get(values, nameof(Job.IsActive))))
+                warnings?.Add($"Row {rowNumber + 1}: IsActive was ignored. Imported listings always start as inactive drafts.");
 
             var job = BuildJob(values, rowNumber + 1, errors);
             if (job != null) jobs.Add(job);
@@ -108,7 +110,7 @@ public sealed class ExcelJobImporter
             EditorialNote = Get(values, nameof(Job.EditorialNote)),
             WalkInVenue = Get(values, nameof(Job.WalkInVenue)),
             OfficialSourceUrl = Get(values, nameof(Job.OfficialSourceUrl)),
-            IsActive = ParseBool(values, nameof(Job.IsActive), true, rowNumber, errors),
+            IsActive = false,
             IsFeatured = ParseBool(values, nameof(Job.IsFeatured), false, rowNumber, errors)
         };
         if (TryInt(values, nameof(Job.BatchFrom), rowNumber, errors, out var batchFrom)) job.BatchFrom = batchFrom;

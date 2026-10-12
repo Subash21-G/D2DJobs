@@ -1,5 +1,5 @@
 [CmdletBinding()]
-param([string]$PlaywrightModules, [int]$Port = 7233, [string]$TestScript = 'tests/browser.cjs', [switch]$VerifyAdGating)
+param([string]$PlaywrightModules, [int]$Port = 7233, [string]$TestScript = 'tests/browser.cjs', [switch]$VerifyAdGating, [ValidatePattern('^[A-Za-z0-9-]{1,32}$')][string]$BuildName = 'regression-build')
 $ErrorActionPreference = 'Stop'
 $repo = Split-Path $PSScriptRoot -Parent
 Push-Location $repo
@@ -35,7 +35,7 @@ try {
     $env:TEST_BASE_URL = $env:ASPNETCORE_URLS
     if ($PlaywrightModules) { $env:NODE_PATH = (Resolve-Path -LiteralPath $PlaywrightModules).Path }
     New-Item -ItemType Directory -Path artifacts -Force | Out-Null
-    $output = Join-Path $repo 'artifacts\regression-build'
+    $output = Join-Path $repo ('artifacts\' + $BuildName)
     dotnet build JobForFresher.csproj --no-restore -o $output
     if ($LASTEXITCODE -ne 0) { throw 'Build failed.' }
     # Dedicated content root isolates persisted security keys and settings.

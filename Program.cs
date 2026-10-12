@@ -55,7 +55,8 @@ builder.Services.AddRateLimiter(options =>
     options.OnRejected = async (context, token) => { context.HttpContext.Response.Headers.RetryAfter = "60"; await context.HttpContext.Response.WriteAsync("Too many requests. Please wait one minute and try again.", token); };
 });
 var app = builder.Build();
-// Migrations are explicit in production; run the reviewed script before deploying.
+// Production automatic migration is opt-in and defaults off. Keep Database__ApplyMigrations=false there;
+// apply only the reviewed release SQL through the deployment process.
 if (app.Environment.IsDevelopment() || builder.Configuration.GetValue<bool>("Database:ApplyMigrations"))
 {
     using var scope = app.Services.CreateScope();

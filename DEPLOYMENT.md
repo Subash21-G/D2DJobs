@@ -1,14 +1,16 @@
 # Deployment and recovery
 
 ## Prepare
-Run `powershell -File scripts/Prepare-Release.ps1` from this repository with the .NET 10 SDK and matching EF CLI installed. This produces `artifacts/publish` and `artifacts/deploy.sql`; it does not apply SQL or deploy anything. Use a fresh artifacts folder for each release.
+Run `powershell -File scripts/Prepare-Release.ps1` from this repository with the .NET 10 SDK and matching EF CLI installed. It verifies the pending imported-job migration, then creates a fresh timestamped release under `artifacts/releases/<release-name>/` containing `publish/` and idempotent `deploy.sql`. Pass `-ReleaseName` to choose a name. Existing releases and the legacy `artifacts/publish` and `artifacts/deploy.sql` outputs are never overwritten. It does not connect to a database, apply SQL or deploy anything.
+
+Migration `20261001082905_ActivateImportedJobs` retains its original ID and designer but has an intentionally empty `Up()` and `Down()`. It performs no schema or data updates; imported jobs remain inactive until reviewed. Let EF record this migration normally when the reviewed idempotent script is executed. Do not add, edit or fabricate a row in `__EFMigrationsHistory` manually.
 
 ## Before updating production
 1. Verify the host can run this net10.0 application (including the ASP.NET Core hosting bundle for IIS). Keep the current application release for rollback.
 2. Stop the site or enable the host's maintenance mode. Back up SQL Server using the host's database backup facility. Record the backup and confirm it can restore into a separate database.
 3. Run `powershell -File scripts/Backup-SiteFiles.ps1 -SiteRoot 'C:\\sites\\JobForFresher' -Destination 'D:\\private-backups\\JobForFresher-release.zip'`. Choose a new archive outside the website and protect access. This includes App_Data security keys/settings and uploaded logos, including hidden files. Back up environment secrets separately through the host's secret manager. The ZIP is not encrypted and is not a database backup.
 4. If an old deployment contains applicant documents, retain them outside the public web root and migrate them using your host's secure file-management process. This project has no applicant resume upload or admin resume-download workflow.
-5. Review and apply deploy.sql against the intended database through your database administration tool. Do not enable automatic production migrations as a substitute for reviewing the script.
+5. Keep production `Database__ApplyMigrations` unset or `false`. `Program.cs` only runs automatic migrations in Development or when this production opt-in is true. Review and apply the generated release `deploy.sql` against the intended database through your database administration tool; do not enable automatic production migrations as a substitute for reviewing the script.
 6. Deploy the publish output without deleting existing App_Data or uploads. Grant the application identity only the required filesystem access. Configure database credentials, admin bootstrap credentials if needed, and email credentials through deployment secrets. Disable bootstrap after initial account creation.
 7. Use HTTPS. If a reverse proxy terminates TLS, configure trusted forwarded headers for that actual hosting topology before testing login. Do not trust arbitrary forwarded headers.
 8. Set `SiteSettings__SiteUrl=https://d2djobs.in` in the production environment (or save the same URL in Admin > Site setup), then open Admin > Site setup for the real channel URLs. Leave advertising off until actual account approval, slot IDs and the appropriate consent platform are ready.
@@ -44,6 +46,8 @@ Email subscriptions, automatic channel posting, automatic AdSense synchronizatio
 
 ## Repeat local checks
 For content publishing and ad suppression checks, run `powershell -NoProfile -File tests/Run-BrowserChecks.ps1 -PlaywrightModules .mobile-check/node_modules -TestScript tests/content-quality.cjs -VerifyAdGating`. This uses fake ad settings in an isolated production-mode test server and blocks all external browser requests. It does not enable production ads.
+
+After building, run `powershell -NoProfile -ExecutionPolicy Bypass -File tests/Verify-PendingMigration.ps1 -Configuration Release` to generate the pending migration SQL without connecting to a database and assert that it contains no `Jobs` table operations.
 
 Run the browser regression script for isolated application checks; file backups are covered by the deployment backup procedure.
 Run `powershell -NoProfile -File tests/Run-BrowserChecks.ps1 -PlaywrightModules .mobile-check/node_modules` with SQL Server LocalDB, the development HTTPS certificate, Node, Playwright and Edge available. The runner creates a new LocalDB database, random temporary admin credentials and a separate content root; it stops the test server afterward. It does not reuse the normal application database or modify site settings. Test databases and artifacts are retained for inspection. The PlaywrightModules argument may point to another existing installation; no dependency download is performed by this runner.
