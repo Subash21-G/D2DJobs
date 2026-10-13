@@ -5,3 +5,34 @@
 .admin-navigation form{margin-left:auto}.admin-navigation a:last-child{margin-left:0}.admin-navigation button{min-height:44px;padding:9px 16px}.admin-workspace .compact-job{overflow-wrap:anywhere}@media(max-width:760px){.admin-navigation form{margin-left:0}}
 .bulk-job-actions{display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:12px;margin:12px 0;padding:12px 14px;border:1px solid #e0e7ef;border-radius:9px;background:#f7f9fc;color:#52657f;font-size:13px}.bulk-job-actions .danger-button{min-height:44px;padding:9px 14px;font-weight:650}.admin-select-cell{width:48px;text-align:center}.admin-select-cell input{width:20px;height:20px;accent-color:#195cd6;cursor:pointer}
 @media(max-width:760px){.admin-job-table td.admin-select-cell{width:100%;min-height:44px;padding:0!important;text-align:left}.admin-job-table td.admin-select-cell::before{content:none;display:none}.bulk-job-actions{align-items:flex-start}.bulk-job-actions .danger-button{width:100%;min-height:48px}}
+/* Dashboard cards are keyboard and touch filters for the visible job rows. */
+.metric-filter{width:100%;text-align:left;color:inherit;font:inherit;cursor:pointer;transition:border-color .15s,box-shadow .15s,transform .15s}
+.metric-filter:hover,.metric-filter:focus-visible{border-color:#195cd6;box-shadow:0 0 0 3px rgba(25,92,214,.12);outline:none}
+.metric-filter[aria-pressed="true"]{border-color:#195cd6;background:#edf3ff;box-shadow:inset 0 0 0 1px #195cd6}
+.metric-filter small{color:#627286;font-size:12px}
+@media(max-width:760px){
+ .admin-topbar{align-items:flex-start}
+ .admin-navigation{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:6px}
+ .admin-navigation>a,.admin-navigation form,.admin-navigation form button{width:100%;text-align:center;justify-content:center}
+ .admin-content{width:min(100% - 20px,680px);margin:18px auto}
+ .admin-heading{align-items:stretch;gap:10px}
+ .admin-heading>div{width:100%}
+ .admin-heading>.primary-button,.admin-heading>.secondary-button{flex:1 1 calc(50% - 8px);text-align:center;justify-content:center}
+ .admin-metrics{grid-template-columns:repeat(2,minmax(0,1fr));gap:10px;margin-bottom:18px}
+ .metric{padding:14px;gap:5px}
+ .metric strong{font-size:1.6rem}
+ .admin-panel{padding:15px}
+ .admin-filters{grid-template-columns:minmax(0,1fr)}
+ .admin-filters>.admin-field:first-child{grid-column:auto}
+ .admin-filters>.primary-button,.admin-filters>.secondary-button{width:100%;justify-content:center}
+ .admin-job-table tr{padding:12px}
+ .admin-row-actions>*{flex:1 1 auto}
+ .admin-row-actions form{flex:1 1 auto}
+ .admin-row-actions form button{width:100%}
+}
+@media(max-width:420px){
+ .admin-metrics{grid-template-columns:minmax(0,1fr)}
+ .admin-heading>.primary-button,.admin-heading>.secondary-button{flex-basis:100%}
+ .admin-brand{font-size:14px}
+ .admin-topbar>a:last-child{font-size:13px}
+}
