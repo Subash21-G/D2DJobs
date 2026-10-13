@@ -112,9 +112,12 @@ public class AdminController(ApplicationDbContext db, IWebHostEnvironment enviro
         var unusableLinkIds = recentJobsForDuplicates.Where(JobQuality.HasUnusableApplicationUrl()).Select(j => j.Id);
         var unusableSourceIds = recentJobsForDuplicates.Where(JobQuality.HasUnusableOfficialSourceUrl()).Select(j => j.Id);
         var internalInstructionIds = recentJobsForDuplicates.Where(JobQuality.HasInternalApplicationFieldText()).Select(j => j.Id);
+        var verificationCutoff = JobQuality.VerificationCutoff();
+        var notPublishableIds = recentJobsForDuplicates.Where(JobQuality.NeedsReview(verificationCutoff)).Select(j => j.Id);
         ViewBag.UnusableApplicationLinkJobs = await recentJobsForDuplicates.Where(j =>
             unusableLinkIds.Contains(j.Id) || unusableSourceIds.Contains(j.Id) ||
-            internalInstructionIds.Contains(j.Id) || duplicateIds.Contains(j.Id)).CountAsync();
+            internalInstructionIds.Contains(j.Id) || notPublishableIds.Contains(j.Id) ||
+            duplicateIds.Contains(j.Id)).CountAsync();
         metric = metric is "all" or "active" or "expired" or "featured" or "application" or "duplicate" or "mismatch" ? metric : null;
         jobs = metric switch
         {
@@ -124,7 +127,8 @@ public class AdminController(ApplicationDbContext db, IWebHostEnvironment enviro
             "featured" => jobs.Where(j => j.IsFeatured),
             "application" => jobs.Where(j =>
                 unusableLinkIds.Contains(j.Id) || unusableSourceIds.Contains(j.Id) ||
-                internalInstructionIds.Contains(j.Id) || duplicateIds.Contains(j.Id)),
+                internalInstructionIds.Contains(j.Id) || notPublishableIds.Contains(j.Id) ||
+                duplicateIds.Contains(j.Id)),
             "duplicate" => jobs.Where(j => duplicateIds.Contains(j.Id)),
             "mismatch" => jobs.Where(j => detailsMismatchIds.Contains(j.Id)),
             "all" => jobs,
@@ -152,7 +156,7 @@ public class AdminController(ApplicationDbContext db, IWebHostEnvironment enviro
         if (pageJobs.Count > 0)
         {
             var pageIds = pageJobs.Select(job => job.Id).ToArray();
-            pagePubliclyDiscoverableIds = (await recentJobsForDuplicates.Where(JobQuality.HasUsableApplicationUrl()).Where(JobQuality.HasUsableOfficialSourceUrl()).Where(j => !duplicateIds.Contains(j.Id)).Select(j => j.Id).Where(id => pageIds.Contains(id)).ToListAsync()).ToHashSet();
+            pagePubliclyDiscoverableIds = (await recentJobsForDuplicates.Where(JobQuality.ReadyForIndex(verificationCutoff)).Where(j => !duplicateIds.Contains(j.Id)).Select(j => j.Id).Where(id => pageIds.Contains(id)).ToListAsync()).ToHashSet();
         }
         ViewBag.PubliclyDiscoverableJobIds = pagePubliclyDiscoverableIds;
         return View(pageJobs);

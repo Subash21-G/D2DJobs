@@ -3,6 +3,7 @@
 @{
     var counts = ViewBag.CategoryCounts as Dictionary<string, int> ?? new();
     var companies = ViewBag.HiringCompanies as Dictionary<string, int> ?? new();
+    var hasOpenings = Model.Count > 0;
     string Initials(string name) => string.IsNullOrWhiteSpace(name) ? "D2D" : string.Concat(name.Split(' ', StringSplitOptions.RemoveEmptyEntries).Take(2).Select(word => char.ToUpperInvariant(word[0])));
     var icons = new Dictionary<string, string> { ["Freshers Jobs"] = "fa-graduation-cap", ["Off Campus"] = "fa-briefcase", ["Walk-in"] = "fa-person-walking", ["IT Jobs"] = "fa-laptop-code", ["Government Jobs"] = "fa-landmark", ["Bank Jobs"] = "fa-building-columns", ["Internship Programs"] = "fa-seedling", ["Work From Home Jobs"] = "fa-house", ["Core Engineering Jobs"] = "fa-gears", ["BPO / Support Jobs"] = "fa-headset" };
 }
@@ -17,14 +18,14 @@
             <button type="submit" class="primary-button">Search jobs <i class="fa-solid fa-arrow-right" aria-hidden="true"></i></button>
         </form>
         <div class="home-benefits">
-            <div><i class="fa-solid fa-briefcase" aria-hidden="true"></i><span><strong>@ViewBag.TotalJobs active openings</strong><small>Explore your next opportunity</small></span></div>
+            <div><i class="fa-solid fa-briefcase" aria-hidden="true"></i><span><strong>@(hasOpenings ? $"{ViewBag.TotalJobs} public openings" : "No public openings right now")</strong><small>@(hasOpenings ? "Browse current opportunities" : "We show jobs that pass our publication checks")</small></span></div>
             <div><i class="fa-regular fa-bookmark" aria-hidden="true"></i><span><strong>Your own shortlist</strong><small>Save roles you want to revisit</small></span></div>
-            <div><i class="fa-solid fa-arrow-up-right-from-square" aria-hidden="true"></i><span><strong>Direct applications</strong><small>Follow employer application links</small></span></div>
+            <div><i class="fa-solid fa-shield-halved" aria-hidden="true"></i><span><strong>Check before applying</strong><small>Use the linked source for final requirements</small></span></div>
         </div>
     </div>
 </section>
 <section class="home-section home-container" aria-labelledby="latest-heading">
-    <div class="home-section-heading"><div><h2 id="latest-heading">Latest job updates</h2><p>Fresh possibilities for your next chapter.</p></div><a asp-action="AllJobs">Explore all jobs <i class="fa-solid fa-arrow-right" aria-hidden="true"></i></a></div>
+    <div class="home-section-heading"><div><h2 id="latest-heading">@(hasOpenings ? "Current opportunities" : "Job availability")</h2><p>@(hasOpenings ? "Openings that currently meet our publication checks." : "No openings currently meet our publication checks.")</p></div><a asp-action="AllJobs">Explore all jobs <i class="fa-solid fa-arrow-right" aria-hidden="true"></i></a></div>
     <div class="home-job-grid">
         @foreach (var job in Model)
         {
@@ -39,12 +40,34 @@
             </article>
         }
     </div>
-    @if (Model.Count == 0) { <div class="empty-state"><h3>New opportunities are on their way</h3><p>Explore our career resources while you prepare for your next application.</p><a class="primary-button" asp-action="Resources">Explore career resources</a></div> }
+    @if (!hasOpenings)
+    {
+        <section class="home-empty-panel" aria-labelledby="home-empty-heading" role="status">
+            <span class="home-empty-icon"><i class="fa-regular fa-folder-open" aria-hidden="true"></i></span>
+            <div class="home-empty-copy">
+                <span class="eyebrow">CURRENT LISTING STATUS</span>
+                <h3 id="home-empty-heading">There are no public openings at the moment.</h3>
+                <p>We keep listings out of the public directory when key source, date or application checks are not met. You can still use the guides and tools below while you wait for suitable openings.</p>
+                <div class="home-empty-actions">
+                    <a class="primary-button" asp-action="Alerts">Get job alerts <i class="fa-solid fa-arrow-right" aria-hidden="true"></i></a>
+                    <a class="secondary-button" asp-action="Resources">Explore career guides</a>
+                    <a class="secondary-button" asp-controller="Resume" asp-action="Index">Open free resume builder</a>
+                </div>
+            </div>
+        </section>
+    }
     @if (ViewBag.TotalPages > 1) { <div class="home-more"><a class="secondary-button" asp-action="AllJobs" asp-route-page="2">More opportunities <i class="fa-solid fa-arrow-right" aria-hidden="true"></i></a></div> }
 </section>
 <section class="home-category-section" aria-labelledby="categories-heading"><div class="home-container">
     <div class="home-section-heading"><div><h2 id="categories-heading">Browse by category</h2><p>Find a path that fits where you are in your career.</p></div></div>
-    <div class="home-category-grid">@foreach (var name in JobCategories.All) { var count = counts.GetValueOrDefault(name); <a class="home-category" asp-route="category" asp-route-categorySlug="@JobCategories.Slug(name)"><i class="fa-solid @icons[name]" aria-hidden="true"></i><span><strong>@name</strong><small>@(count == 0 ? "No openings right now — check back soon" : $"{count} open {(count == 1 ? "job" : "jobs")}")</small></span></a> }</div>
+    @if (counts.Values.Sum() > 0)
+    {
+        <div class="home-category-grid">@foreach (var name in JobCategories.All.Where(name => counts.GetValueOrDefault(name) > 0)) { var count = counts.GetValueOrDefault(name); <a class="home-category" asp-route="category" asp-route-categorySlug="@JobCategories.Slug(name)"><i class="fa-solid @icons[name]" aria-hidden="true"></i><span><strong>@name</strong><small>@(count + " open " + (count == 1 ? "job" : "jobs"))</small></span></a> }</div>
+    }
+    else
+    {
+        <div class="home-category-empty"><p>Category listings appear here when openings meet our publication checks.</p><a asp-action="EditorialPolicy">Read how listings are handled <i class="fa-solid fa-arrow-right" aria-hidden="true"></i></a></div>
+    }
 </div></section>
 @if (companies.Count > 0)
 {
@@ -57,4 +80,3 @@
         <div class="home-alert-panel home-whatsapp"><div><span class="home-kicker"><i class="fa-brands fa-whatsapp" aria-hidden="true"></i> WhatsApp channel</span><h2>Great opportunities.<br />Straight to your WhatsApp.</h2><p>Join our community for fresher jobs, internships and off-campus drives.</p></div><a class="home-whatsapp-button" href="@SiteSettings.Value.WhatsAppUrl" target="_blank" rel="noopener noreferrer">Join WhatsApp channel <i class="fa-solid fa-arrow-up-right-from-square" aria-hidden="true"></i></a></div>
     }
 </section>
-@if (!string.IsNullOrWhiteSpace(SiteSettings.Value.WhatsAppUrl)) { <a class="home-floating-whatsapp" href="@SiteSettings.Value.WhatsAppUrl" target="_blank" rel="noopener noreferrer"><i class="fa-brands fa-whatsapp" aria-hidden="true"></i><span>Join WhatsApp channel</span></a> }

@@ -44,7 +44,40 @@ else {
 <form id="sort-form" method="get" action="@sortAction"><input type="hidden" name="batch" value="@batch" /><input type="hidden" name="search" value="@search" /><input type="hidden" name="qualification" value="@qualification" /><input type="hidden" name="location" value="@location" /><input type="hidden" name="experience" value="@experience" /><noscript><button type="submit">Update sort</button></noscript></form>
 @if (filtered) { <div class="active-filters"><span>Showing @total matching opportunities</span><a asp-action="AllJobs">Clear filters ×</a></div> }
 <div class="job-list">@for (int i = 0; i < Model.Count; i++) { <partial name="_JobCard" model="Model[i]" /> @if (i == 3) { <partial name="Ads/_AdBox" model='"ListingInline"' /> } }</div>
-@if (Model.Count == 0) { <div class="empty-state"><i class="fa-regular fa-folder-open" aria-hidden="true"></i><h3>No openings found here yet</h3><p>Try another category, location or keyword.</p><a class="primary-button" asp-action="AllJobs">Browse all jobs</a></div> }
+@if (Model.Count == 0)
+{
+    <section class="catalog-empty" aria-labelledby="catalog-empty-heading" role="status">
+        <span class="catalog-empty-icon"><i class="fa-regular fa-folder-open" aria-hidden="true"></i></span>
+        <div>
+            <span class="eyebrow">NO MATCHING LISTINGS</span>
+            <h3 id="catalog-empty-heading">@(filtered ? "No current openings match this view." : "No openings currently meet our publication checks.")</h3>
+            <p>@(filtered ? "Clear or change your filters to see other openings. You can also browse career guides and set an alert for future listings." : "The public catalogue includes listings that pass source, date and application checks. Browse the career guides or set an alert while the catalogue is updated.")</p>
+            <div class="catalog-empty-actions">
+                @if (filtered)
+                {
+                    if (!string.IsNullOrEmpty(category) && (batch.HasValue || !string.IsNullOrWhiteSpace(search + location + experience + qualification)))
+                    {
+                        <a class="primary-button" asp-route="category" asp-route-categorySlug="@JobCategories.Slug(category)">Clear filters</a>
+                    }
+                    else if (!string.IsNullOrEmpty(category))
+                    {
+                        <a class="primary-button" asp-action="AllJobs">Browse all jobs</a>
+                    }
+                    else
+                    {
+                        <a class="primary-button" asp-action="AllJobs">Clear filters</a>
+                    }
+                }
+                else
+                {
+                    <a class="primary-button" asp-action="Alerts">Get job alerts</a>
+                }
+                <a class="secondary-button" asp-action="Resources">Career guides</a>
+                <a class="secondary-button" asp-controller="Resume" asp-action="Index">Free resume builder</a>
+            </div>
+        </div>
+    </section>
+}
 @if (pages > 1)
 {
 <nav class="pagination-bar" aria-label="Job result pages"><span>Page @current of @pages</span><div>
@@ -98,6 +131,8 @@ else if (categoryGuide != null && current == 1 && string.IsNullOrWhiteSpace(sear
 
 
 
+@if (Model.Count > 0)
+{
 <section class="explore-panel" aria-labelledby="explore-heading">
 <span class="eyebrow">KEEP EXPLORING</span><h2 id="explore-heading">Find another opportunity that fits you</h2>
 <p>Compare roles, check the requirements and save the openings you want to revisit.</p>
@@ -111,5 +146,6 @@ else if (categoryGuide != null && current == 1 && string.IsNullOrWhiteSpace(sear
 <article><span class="eyebrow">02 · GET READY</span><h3>Show relevant work</h3><p>Highlight projects, internships and skills that match the role. Keep your resume clear and your contact details current.</p></article>
 <article><span class="eyebrow">03 · STAY ORGANIZED</span><h3>Build your shortlist</h3><p>Save promising jobs in this browser and track applications yourself. Never pay anyone to guarantee a job.</p></article>
 </div><p><a class="details-link" asp-controller="Home" asp-action="CareerGuide">Read the complete fresher job search guide &nearr;</a></p></section>
+}
 
 }

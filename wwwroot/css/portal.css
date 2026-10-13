@@ -22,12 +22,14 @@
 /* Discovery and advertising essentials */
 .discovery-intro{padding:28px;border:1px solid var(--line);border-radius:16px;background:linear-gradient(115deg,var(--surface) 45%,var(--soft))}
 .category-sections .sidebar-panel{border-top:3px solid var(--blue)}
+.catalog-empty{display:grid;grid-template-columns:auto minmax(0,1fr);align-items:start;gap:20px;margin:20px 0;padding:28px;border:1px solid var(--line);border-radius:16px;background:var(--surface)}.catalog-empty h3{margin:7px 0 9px;font-size:1.25rem;line-height:1.4}.catalog-empty p{max-width:75ch;color:var(--muted);line-height:1.7}.catalog-empty .eyebrow{color:var(--blue);font-size:.72rem;font-weight:750;letter-spacing:.1em}.catalog-empty-actions{display:flex;flex-wrap:wrap;gap:10px;margin-top:16px}.catalog-empty-actions>*{min-height:44px}.resource-intro{padding:36px}.resource-intro h1{font-size:clamp(2rem,4vw,3rem);line-height:1.12;letter-spacing:-1px}.resource-intro p{max-width:70ch;line-height:1.7;color:var(--muted)}.resource-context{display:grid;grid-template-columns:auto minmax(0,1fr) auto;align-items:center;gap:14px;margin:20px 0 26px;padding:16px 18px;border:1px solid var(--line);border-radius:12px;background:var(--soft)}.resource-context>i{color:var(--blue);font-size:1.05rem}.resource-context p{margin:0;color:var(--muted);line-height:1.65}.resource-context a{min-height:44px;display:inline-flex;align-items:center;font-weight:650}.resources-grid{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:16px}.resource-card{display:flex;flex-direction:column;min-width:0;padding:22px;border:1px solid var(--line);border-top:3px solid var(--blue);border-radius:14px;background:var(--surface)}.resource-card .eyebrow{color:var(--blue);font-size:.7rem;font-weight:750;letter-spacing:.12em}.resource-card h2{margin:12px 0 8px;font-size:1.15rem;line-height:1.45}.resource-card h2 a{color:var(--ink)}.resource-card>p{color:var(--muted);line-height:1.7}.resource-card-meta{display:grid;gap:3px;margin:auto 0 14px;padding-top:12px;color:var(--muted);font-size:.78rem}.resource-card .details-link{display:inline-flex;align-items:center;justify-content:space-between;gap:10px;min-height:44px;padding-top:10px;border-top:1px solid var(--line);font-weight:650}
 .ad-placement{min-width:0;min-height:120px;padding:12px 0;margin:20px 0;background:var(--surface);border:1px solid var(--line);border-radius:8px;text-align:center;overflow:hidden}
 .ad-label{display:block;font-size:.6875rem;text-transform:uppercase;letter-spacing:1.5px;color:var(--muted);margin-bottom:10px}
 .jobs-sidebar .ad-placement{min-height:280px;margin:0}
 .sponsor-invite{background:var(--soft)}.sponsor-invite h2{font-size:1.2rem;margin:12px 0}.sponsor-invite p{font-size:.875rem;color:var(--muted)}.sponsor-invite a{font-size:.875rem;font-weight:700}
 .partnership-grid{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:20px}.partnership-grid h2{font-size:1.25rem;margin:16px 0}.partnership-grid p{color:var(--muted)}.partnership-contact{margin-top:24px}.partnership-contact h2{margin-top:0}.partnership-contact .muted{margin-top:18px;font-size:.875rem}
 @media(max-width:760px){.discovery-intro{padding:22px}.partnership-grid{grid-template-columns:1fr}.ad-placement{margin:16px 0}}
+@media(max-width:760px){.catalog-empty{grid-template-columns:minmax(0,1fr);gap:14px;padding:20px}.catalog-empty-actions{display:grid;grid-template-columns:minmax(0,1fr)}.catalog-empty-actions>*{justify-content:center;text-align:center}.resource-intro{padding:22px}.resource-context{grid-template-columns:auto minmax(0,1fr);align-items:start}.resource-context a{grid-column:2}.resources-grid{grid-template-columns:minmax(0,1fr)}.resource-card{padding:20px}.resource-intro-actions{display:grid;grid-template-columns:minmax(0,1fr)}.resource-intro-actions>*{justify-content:center;text-align:center}}
 .qualification-links{display:flex;align-items:center;flex-wrap:wrap;gap:8px;margin:0 0 24px;font-size:.8125rem}.qualification-links strong{margin-right:8px;color:var(--muted);font-weight:600}.qualification-links a{padding:5px 12px;border:1px solid var(--line);background:var(--surface);border-radius:20px}.qualification-links a:hover,.qualification-links a.selected{background:var(--blue);color:var(--surface);text-decoration:none}
 .listing-report{margin-top:24px;padding:18px;border:1px solid var(--line);border-radius:8px;background:var(--bg);font-size:.875rem}.listing-report p{margin:5px 0 10px;color:var(--muted)}.job-deadline{font-size:.8125rem;color:var(--muted);margin:12px 0}.deadline-soon{color:var(--green)}
 
@@ -196,3 +198,19 @@
  .utility-bar>.portal-container{font-size:11px}
  .category-strip{grid-template-columns:minmax(0,1fr)}
 }
+
+/* Shared WhatsApp invitation for public pages. */
+.whatsapp-widget{position:fixed;right:24px;bottom:24px;z-index:30;display:grid;justify-items:end;gap:12px;pointer-events:none}
+.whatsapp-widget :is(button,a){pointer-events:auto}
+.whatsapp-popup{position:relative;display:grid;grid-template-columns:auto minmax(0,1fr);align-items:start;gap:14px;width:min(360px,calc(100vw - 32px));padding:22px 20px;border:1px solid #d7e6f4;border-radius:18px;background:var(--surface,#fff);color:var(--ink,#08192b);box-shadow:0 14px 40px #19374926}
+.whatsapp-popup[hidden]{display:none}
+.whatsapp-popup-icon{display:grid;place-items:center;width:42px;height:42px;border-radius:50%;background:#e7f8ee;color:#159447;font-size:1.35rem}
+.whatsapp-popup-copy{min-width:0;padding-right:12px}
+.whatsapp-popup h2{margin:1px 0 6px;font-size:1rem;line-height:1.4}
+.whatsapp-popup p{margin:0 0 12px;color:var(--muted,#576c84);font-size:.82rem;line-height:1.55}
+.whatsapp-popup-copy>a{display:inline-flex;align-items:center;gap:8px;min-height:42px;color:#078b46;font-size:.83rem;font-weight:700}
+.whatsapp-close{position:absolute;top:8px;right:8px;display:grid;place-items:center;width:36px;height:36px;border:0;border-radius:50%;background:transparent;color:var(--muted,#576c84);cursor:pointer}
+.whatsapp-close:hover{background:#edf3f8;color:var(--ink,#08192b)}
+.whatsapp-launcher{position:fixed;right:24px;bottom:24px;z-index:20;display:inline-flex;align-items:center;justify-content:center;gap:12px;min-height:52px;padding:14px 22px;border:0;border-radius:40px;background:#18c65d;color:#fff;box-shadow:0 8px 20px #19374930;cursor:pointer}
+.whatsapp-launcher i{font-size:1.3rem}
+@media(max-width:600px){.whatsapp-widget{right:16px;bottom:16px;gap:10px}.whatsapp-popup{padding:18px 16px;gap:10px}.whatsapp-launcher{width:52px;height:52px;min-height:52px;padding:0}.whatsapp-launcher span{display:none}}

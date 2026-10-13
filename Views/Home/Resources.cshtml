@@ -1,9 +1,10 @@
 @model IReadOnlyList<JobForFresher.Models.CareerResource>
 <nav class="breadcrumbs" aria-label="Breadcrumb"><a href="/">Home</a><span>/</span><span>Career resources</span></nav>
-<section class="discovery-intro"><div><span class="eyebrow">PRACTICAL, ORIGINAL GUIDES</span><h1>Build a stronger <span>first-career toolkit.</span></h1><p>Clear, independent guidance for choosing openings, preparing applications, and applying safely.</p></div></section>
+<section class="discovery-intro resources-intro"><div><span class="eyebrow">CAREER RESOURCE LIBRARY</span><h1>Build a stronger <span>first-career toolkit.</span></h1><p>Use these guides to prepare applications, compare role requirements and protect your information during a job search.</p><div class="resource-intro-actions"><a class="primary-button" asp-action="CareerGuide">Read the fresher job search guide</a><a class="secondary-button" asp-controller="Resume" asp-action="Index">Open resume builder</a></div></div></section>
+<aside class="resource-context" aria-label="How to use these guides"><i class="fa-solid fa-circle-info" aria-hidden="true"></i><p>These are general preparation guides. Each employer's current vacancy notice is the authority for qualifications, dates, selection stages and application steps.</p><a asp-action="EditorialPolicy">How D2DJobs handles listings</a></aside>
 <section class="category-sections resources-grid" aria-label="Career guides">
 @foreach (var article in Model)
 {
-    <article class="sidebar-panel"><span class="eyebrow">CAREER GUIDE</span><h2><a asp-route="career-resource" asp-route-slug="@article.Slug">@article.Title</a></h2><p>@article.Summary</p><a class="details-link" asp-route="career-resource" asp-route-slug="@article.Slug">Read the guide &nearr;</a></article>
+    <article class="resource-card"><span class="eyebrow">CAREER GUIDE</span><h2><a asp-route="career-resource" asp-route-slug="@article.Slug">@article.Title</a></h2><p>@article.Summary</p><div class="resource-card-meta"><span>@article.Sections.Count practical sections</span><span>Updated @article.Updated.ToString("dd MMM yyyy")</span></div><a class="details-link" asp-route="career-resource" asp-route-slug="@article.Slug">Read the guide <span aria-hidden="true">&nearr;</span></a></article>
 }
 </section>

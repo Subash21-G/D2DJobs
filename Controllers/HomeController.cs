@@ -28,10 +28,10 @@ public class HomeController : Controller
     private IQueryable<Job> DiscoverableJobs()
     {
         var recent = AvailableJobs();
-        // Active is the editor's explicit publication control. Keep objective
-        // availability, duplicate, and vacancy-specific application URL checks.
-        var checkedJobs = recent.Where(JobQuality.HasUsableApplicationUrl())
-            .Where(JobQuality.HasUsableOfficialSourceUrl());
+        // Active remains the editor's publication control. The full SQL-translatable
+        // quality predicate applies the same automatic content, source, date and
+        // application checks to every public discovery surface.
+        var checkedJobs = recent.Where(JobQuality.ReadyForIndex(JobQuality.VerificationCutoff()));
         return checkedJobs.Where(job => !recent.Any(other => other.Id != job.Id &&
             (
                 (job.ApplyLink != "" && job.ApplyLink == other.ApplyLink) ||

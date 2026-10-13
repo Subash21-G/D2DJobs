@@ -15,7 +15,7 @@
 }
 @if (TempData["Notice"] is string notice) { <p class="notice" role="status">@notice</p> }
 <div class="admin-heading">
-    <div><span class="eyebrow">WORKSPACE OVERVIEW</span><h1>Manage your job listings</h1><p class="muted">Set each job to Active to publish it, or Inactive to hide it.</p></div>
+    <div><span class="eyebrow">WORKSPACE OVERVIEW</span><h1>Manage your job listings</h1><p class="muted">Active jobs appear publicly when they pass the automatic source, date and content checks. Set a job to Inactive to hide it.</p></div>
     <a class="primary-button" asp-action="Create">+ Create a job</a><a class="secondary-button" asp-action="Import">Import Excel</a>
 </div>
 <div class="admin-metrics" aria-label="Job totals">
@@ -50,7 +50,7 @@
             <tr>
                 <td class="admin-select-cell" data-label="Select"><input type="checkbox" form="bulk-delete-jobs" name="jobIds" value="@job.Id" data-job-select aria-label="Select @job.Title" /></td>
                 <td data-label="Opportunity"><strong>@job.Title</strong><small>@job.CompanyName &middot; @job.Location</small><small>@job.Category &middot; @(JobSourceTypes.Label(job.SourceType))</small></td>
-                <td data-label="Status"><span class="status-badge status-@status.ToLowerInvariant()">@status</span>@if (job.IsActive) { <small class="public-state @(publiclyDiscoverable ? "public-state-visible" : "public-state-hidden")">@(publiclyDiscoverable ? "Shown on public site" : "Not shown: duplicate/link/date issue")</small> }</td>
+                <td data-label="Status"><span class="status-badge status-@status.ToLowerInvariant()">@status</span>@if (job.IsActive) { <small class="public-state @(publiclyDiscoverable ? "public-state-visible" : "public-state-hidden")">@(publiclyDiscoverable ? "Shown on public site" : "Not shown: publication checks")</small> }</td>
                 <td data-label="Performance">@job.ViewsCount views<small>@job.ApplyClicks application clicks</small></td>
                 <td data-label="Added">@((job.ImportedUtc ?? job.PostedDate.ToUniversalTime()).ToLocalTime().ToString("dd MMM yyyy"))</td>
                 <td data-label="Manage"><div class="admin-row-actions"><a class="secondary-button" asp-action="Edit" asp-route-id="@job.Id">Edit</a>@if (job.IsActive && !string.IsNullOrEmpty(job.Slug)) { <a class="secondary-button" asp-controller="Home" asp-action="Details" asp-route-slug="@job.Slug">View</a> }<form method="post" asp-action="Delete" asp-route-id="@job.Id" data-confirm-delete><button class="danger-button" type="submit">Delete</button></form><partial name="_CopyShareText" model="job" /></div></td>

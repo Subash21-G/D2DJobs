@@ -1,0 +1,18 @@
+@inject Microsoft.Extensions.Options.IOptionsSnapshot<JobForFresher.Models.SiteOptions> SiteSettings
+@if (!string.IsNullOrWhiteSpace(SiteSettings.Value.WhatsAppUrl))
+{
+    <div class="whatsapp-widget" data-whatsapp-widget>
+        <aside class="whatsapp-popup" id="whatsapp-invitation" data-whatsapp-popup hidden aria-labelledby="whatsapp-popup-heading">
+            <button class="whatsapp-close" type="button" data-whatsapp-close aria-label="Dismiss WhatsApp invitation"><i class="fa-solid fa-xmark" aria-hidden="true"></i></button>
+            <span class="whatsapp-popup-icon"><i class="fa-brands fa-whatsapp" aria-hidden="true"></i></span>
+            <div class="whatsapp-popup-copy">
+                <h2 id="whatsapp-popup-heading">Get job updates on WhatsApp</h2>
+                <p>Follow D2DJobs for fresher jobs, internships and off-campus drives.</p>
+                <a href="@SiteSettings.Value.WhatsAppUrl" target="_blank" rel="noopener noreferrer">Join the WhatsApp group <i class="fa-solid fa-arrow-up-right-from-square" aria-hidden="true"></i></a>
+            </div>
+        </aside>
+        <button class="whatsapp-launcher" type="button" data-whatsapp-toggle aria-controls="whatsapp-invitation" aria-expanded="false" aria-label="Open WhatsApp job updates">
+            <i class="fa-brands fa-whatsapp" aria-hidden="true"></i><span>WhatsApp updates</span>
+        </button>
+    </div>
+}

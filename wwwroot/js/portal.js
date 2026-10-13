@@ -38,5 +38,32 @@
         try { await navigator.clipboard.writeText(event.currentTarget.dataset.copyText || window.location.href); status.textContent = 'Share text copied.'; }
         catch { status.textContent = 'Copy the URL from your address bar to share this job.'; }
     });
+
+    const whatsappPopup = document.querySelector('[data-whatsapp-popup]');
+    const whatsappToggle = document.querySelector('[data-whatsapp-toggle]');
+    const whatsappClose = document.querySelector('[data-whatsapp-close]');
+    if (whatsappPopup && whatsappToggle && whatsappClose) {
+        const dismissalKey = 'd2djobs-whatsapp-invitation-dismissed';
+        const wasDismissed = () => { try { return sessionStorage.getItem(dismissalKey) === 'true'; } catch { return false; } };
+        const setPopupOpen = (open) => {
+            whatsappPopup.hidden = !open;
+            whatsappToggle.setAttribute('aria-expanded', String(open));
+        };
+        whatsappToggle.addEventListener('click', () => setPopupOpen(whatsappPopup.hidden));
+        whatsappClose.addEventListener('click', () => {
+            setPopupOpen(false);
+            try { sessionStorage.setItem(dismissalKey, 'true'); } catch {}
+            whatsappToggle.focus();
+        });
+        document.addEventListener('keydown', event => {
+            if (event.key === 'Escape' && !whatsappPopup.hidden) {
+                setPopupOpen(false);
+                whatsappToggle.focus();
+            }
+        });
+        if (!wasDismissed()) window.setTimeout(() => {
+            if (document.visibilityState === 'visible') setPopupOpen(true);
+        }, 2500);
+    }
 })();
 

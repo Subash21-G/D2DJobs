@@ -38,6 +38,7 @@
 <div><h2>Explore jobs</h2><a asp-controller="Home" asp-action="AllJobs">All jobs</a><a asp-controller="Home" asp-action="Alerts">Job alerts</a><a asp-controller="Home" asp-action="SavedJobs">Saved jobs</a><a asp-controller="Resume" asp-action="Index">Free resume builder</a></div>
 <div><h2>D2DJobs</h2><a asp-controller="Home" asp-action="About">About us</a><a asp-controller="Home" asp-action="Resources">Career resources</a><a asp-controller="Home" asp-action="CareerGuide">Fresher job search guide</a><a href="/editorial-policy">Editorial policy</a><a asp-controller="Home" asp-action="Contact">Contact us</a><a asp-controller="Home" asp-action="Advertise">Advertise with us</a><a asp-controller="Home" asp-action="PrivacyPolicy">Privacy policy</a><a asp-controller="Home" asp-action="Terms">Terms & conditions</a><a asp-controller="Home" asp-action="Disclaimer">Disclaimer</a></div>
 </div><div class="portal-container footer-bottom"><span>&copy; @DateTime.Now.Year D2DJobs</span></div></footer>
+<partial name="_WhatsAppPopup" />
 <script src="~/js/portal.js" asp-append-version="true"></script>
 @await RenderSectionAsync("Scripts", required: false)
 </body></html>
