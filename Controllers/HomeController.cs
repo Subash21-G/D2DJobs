@@ -30,13 +30,8 @@ public class HomeController : Controller
         var recent = AvailableJobs();
         // Active is the editor's explicit publication control. Keep objective
         // availability, duplicate, and vacancy-specific application URL checks.
-        var checkedJobs = recent.Where(j =>
-            j.ApplyLink != null &&
-            (j.ApplyLink.StartsWith("https://") || j.ApplyLink.StartsWith("http://")) &&
-            !j.ApplyLink.Contains(" ") && !j.ApplyLink.Contains("@") &&
-            !j.ApplyLink.ToLower().EndsWith("/careers") && !j.ApplyLink.ToLower().EndsWith("/career") &&
-            !j.ApplyLink.ToLower().EndsWith("/jobs") && !j.ApplyLink.ToLower().EndsWith("/job") &&
-            !j.ApplyLink.ToLower().EndsWith("/recruitment") && !j.ApplyLink.ToLower().EndsWith("/vacancies") &&
+        var checkedJobs = recent.Where(JobQuality.HasUsableApplicationUrl())
+            .Where(j =>
             j.OfficialSourceUrl != null &&
             (j.OfficialSourceUrl.StartsWith("https://") || j.OfficialSourceUrl.StartsWith("http://")) &&
             !j.OfficialSourceUrl.Contains(" ") && !j.OfficialSourceUrl.Contains("@"));

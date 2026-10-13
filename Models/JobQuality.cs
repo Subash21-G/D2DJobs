@@ -99,6 +99,25 @@ public static class JobQuality
         return complete;
     }
 
+    // Keep these URL checks in expression form so EF Core can translate the
+    // same application-link rule in public discovery and Admin filters.
+    public static Expression<Func<Job, bool>> HasUsableApplicationUrl() => j =>
+        j.ApplyLink != null &&
+        ((j.ApplyLink.StartsWith("https://") && j.ApplyLink.Length > 8 && !j.ApplyLink.Substring(8).StartsWith("/") && !j.ApplyLink.Substring(8).StartsWith("?") && !j.ApplyLink.Substring(8).StartsWith("#") && !j.ApplyLink.Substring(8).StartsWith(":")) ||
+         (j.ApplyLink.StartsWith("http://") && j.ApplyLink.Length > 7 && !j.ApplyLink.Substring(7).StartsWith("/") && !j.ApplyLink.Substring(7).StartsWith("?") && !j.ApplyLink.Substring(7).StartsWith("#") && !j.ApplyLink.Substring(7).StartsWith(":"))) &&
+        !j.ApplyLink.Contains(" ") && !j.ApplyLink.Contains("@") &&
+        !j.ApplyLink.ToLower().EndsWith("/careers") && !j.ApplyLink.ToLower().EndsWith("/career") &&
+        !j.ApplyLink.ToLower().EndsWith("/jobs") && !j.ApplyLink.ToLower().EndsWith("/job") &&
+        !j.ApplyLink.ToLower().EndsWith("/recruitment") && !j.ApplyLink.ToLower().EndsWith("/vacancies");
+
+    public static Expression<Func<Job, bool>> HasUnusableApplicationUrl() => j =>
+        !((j.ApplyLink.StartsWith("https://") && j.ApplyLink.Length > 8 && !j.ApplyLink.Substring(8).StartsWith("/") && !j.ApplyLink.Substring(8).StartsWith("?") && !j.ApplyLink.Substring(8).StartsWith("#") && !j.ApplyLink.Substring(8).StartsWith(":")) ||
+          (j.ApplyLink.StartsWith("http://") && j.ApplyLink.Length > 7 && !j.ApplyLink.Substring(7).StartsWith("/") && !j.ApplyLink.Substring(7).StartsWith("?") && !j.ApplyLink.Substring(7).StartsWith("#") && !j.ApplyLink.Substring(7).StartsWith(":"))) ||
+        j.ApplyLink.Contains(" ") || j.ApplyLink.Contains("@") ||
+        j.ApplyLink.ToLower().EndsWith("/careers") || j.ApplyLink.ToLower().EndsWith("/career") ||
+        j.ApplyLink.ToLower().EndsWith("/jobs") || j.ApplyLink.ToLower().EndsWith("/job") ||
+        j.ApplyLink.ToLower().EndsWith("/recruitment") || j.ApplyLink.ToLower().EndsWith("/vacancies");
+
     public static Expression<Func<Job, bool>> NeedsReview(DateTime verifiedAfterUtc)
     {
         var publishable = ReadyForIndex(verifiedAfterUtc);
