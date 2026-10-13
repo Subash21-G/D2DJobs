@@ -35,10 +35,12 @@ public static class JobQuality
         j.ApplicationInstructions != null && j.ApplicationInstructions.Trim().Length >= MinimumApplicationInstructionsLength &&
         j.EditorialNote != null && j.EditorialNote.Trim().Length >= MinimumEditorialNoteLength &&
         j.LastVerifiedUtc.HasValue && j.LastVerifiedUtc >= verifiedAfterUtc && j.LastVerifiedUtc <= DateTime.UtcNow &&
-        (!j.SourcePostedDate.HasValue || j.SourcePostedDate.Value.Date <= DateTime.UtcNow.Date) &&
+        (!j.SourcePostedDate.HasValue || (j.SourcePostedDate.Value.Date <= DateTime.UtcNow.Date && j.SourcePostedDate.Value.Date > DateTime.UtcNow.Date.AddDays(-30))) &&
+        (j.SourcePostedDate.HasValue || j.PostedDate.Date > DateTime.UtcNow.Date.AddDays(-30)) &&
         (!j.ExpiryDate.HasValue || j.ExpiryDate.Value.Date >= DateTime.UtcNow.Date) &&
         (j.WalkInEndDate.HasValue ? j.WalkInEndDate.Value.Date >= DateTime.UtcNow.Date : (!j.WalkInDate.HasValue || j.WalkInDate.Value.Date >= DateTime.UtcNow.Date)) &&
-        ((j.ApplyLink.StartsWith("https://") && j.ApplyLink.Length > 8) || (j.ApplyLink.StartsWith("http://") && j.ApplyLink.Length > 7)) && !j.ApplyLink.Contains(" ") &&
+        ((j.ApplyLink.StartsWith("https://") && j.ApplyLink.Length > 8 && !j.ApplyLink.Substring(8).StartsWith("/") && !j.ApplyLink.Substring(8).StartsWith("?") && !j.ApplyLink.Substring(8).StartsWith("#") && !j.ApplyLink.Substring(8).StartsWith(":")) ||
+         (j.ApplyLink.StartsWith("http://") && j.ApplyLink.Length > 7 && !j.ApplyLink.Substring(7).StartsWith("/") && !j.ApplyLink.Substring(7).StartsWith("?") && !j.ApplyLink.Substring(7).StartsWith("#") && !j.ApplyLink.Substring(7).StartsWith(":"))) && !j.ApplyLink.Contains(" ") &&
         (j.ApplyLink.IndexOf("/", j.ApplyLink.IndexOf("://") + 3) < 0 || j.ApplyLink.IndexOf("/", j.ApplyLink.IndexOf("://") + 3) == j.ApplyLink.Length - 1 ||
          (j.ApplyLink.IndexOf("/", j.ApplyLink.IndexOf("://") + 3) > 0 && j.ApplyLink.IndexOf("/", j.ApplyLink.IndexOf("://") + 3) < j.ApplyLink.Length - 1)) &&
         (!j.ApplyLink.EndsWith("/") || j.ApplyLink.Contains("?")) &&
@@ -69,6 +71,7 @@ public static class JobQuality
         !(j.Title.ToLower().Contains("multiple companies") || j.Title.ToLower().Contains("various companies") ||
           j.Title.ToLower().Contains("top 10") || j.Title.ToLower().Contains("best companies") ||
           j.Title.ToLower().Contains("job fair") || j.Title.ToLower().Contains("job placement course") || j.Title.ToLower().Contains("recruitment course") ||
+          j.Title.ToLower().Contains("roles open") || j.Title.ToLower().Contains("multiple engineering roles") ||
           j.Title.ToLower().Contains("top companies hiring") || j.Title.ToLower().Contains("top 5") || j.Title.ToLower().Contains("top 20") ||
           j.Title.ToLower().Contains("online job course") || j.Title.ToLower().Contains("career coaching course") ||
           j.CompanyName.ToLower().Contains("multiple companies") || j.CompanyName.ToLower().Contains("various companies") ||
@@ -76,71 +79,31 @@ public static class JobQuality
           j.Role.ToLower().Contains("job placement course") || j.Role.ToLower().Contains("career coaching course") ||
           j.Description.ToLower().Contains("multiple openings across companies") || j.Description.ToLower().Contains("course enrollment") ||
           j.Description.ToLower().Contains("course fee") || j.Description.ToLower().Contains("top companies hiring") ||
-          j.Description.ToLower().Contains("course for job placement"));
+          j.Description.ToLower().Contains("course for job placement")) &&
+        !((j.Title.ToLower() + " " + j.CompanyName.ToLower() + " " + j.Role.ToLower() + " " + j.Description.ToLower()).Contains("multiple companies") ||
+          (j.Title.ToLower() + " " + j.CompanyName.ToLower() + " " + j.Role.ToLower() + " " + j.Description.ToLower()).Contains("various companies") ||
+          (j.Title.ToLower() + " " + j.CompanyName.ToLower() + " " + j.Role.ToLower() + " " + j.Description.ToLower()).Contains("top companies hiring") ||
+          (j.Title.ToLower() + " " + j.CompanyName.ToLower() + " " + j.Role.ToLower() + " " + j.Description.ToLower()).Contains("multiple openings across") ||
+          (j.Title.ToLower() + " " + j.CompanyName.ToLower() + " " + j.Role.ToLower() + " " + j.Description.ToLower()).Contains("job fair for multiple") ||
+          (j.Title.ToLower() + " " + j.CompanyName.ToLower() + " " + j.Role.ToLower() + " " + j.Description.ToLower()).Contains("recruitment course") ||
+          (j.Title.ToLower() + " " + j.CompanyName.ToLower() + " " + j.Role.ToLower() + " " + j.Description.ToLower()).Contains("job placement course") ||
+          (j.Title.ToLower() + " " + j.CompanyName.ToLower() + " " + j.Role.ToLower() + " " + j.Description.ToLower()).Contains("online job course") ||
+          (j.Title.ToLower() + " " + j.CompanyName.ToLower() + " " + j.Role.ToLower() + " " + j.Description.ToLower()).Contains("career coaching course") ||
+          j.Title.ToLower().Contains("courses for jobs")) &&
+        !(j.Qualification.ToLower().Contains("verify the full qualification requirements") || j.Qualification.ToLower() == "not specified") &&
+        !j.ApplicationInstructions.ToLower().Contains("applylink") && !j.ApplicationInstructions.ToLower().Contains("officialsourceurl") &&
+        !j.EditorialNote.ToLower().Contains("d2djobs editorial note for") &&
+        !j.Description.ToLower().Contains("related role context: professionals in this type of position commonly") &&
+        !(j.SelectionProcess.ToLower().Contains("selection stages are not clearly stated") || j.SelectionProcess.ToLower().Contains("verify the official employer posting for screening")) &&
+        (j.BatchFrom.HasValue == j.BatchTo.HasValue) && (!j.BatchFrom.HasValue || j.BatchFrom <= j.BatchTo);
         return complete;
     }
 
-    public static Expression<Func<Job, bool>> NeedsReview(DateTime verifiedAfterUtc) => j =>
-        j.Slug == null || j.Slug.Trim() == "" || j.Title.Trim().Length < 5 || j.CompanyName.Trim().Length < 2 || j.Role.Trim().Length < 3 || j.Location.Trim().Length < 2 ||
-        j.Qualification.Trim().Length < 10 || j.Skills.Trim().Length < MinimumSkillsLength ||
-        j.Description.Trim().Length < MinimumDescriptionLength ||
-        j.SelectionProcess == null || j.SelectionProcess.Trim().Length < MinimumSelectionProcessLength ||
-        j.ApplicationInstructions == null || j.ApplicationInstructions.Trim().Length < MinimumApplicationInstructionsLength ||
-        j.EditorialNote == null || j.EditorialNote.Trim().Length < MinimumEditorialNoteLength ||
-        !j.LastVerifiedUtc.HasValue || j.LastVerifiedUtc < verifiedAfterUtc || j.LastVerifiedUtc > DateTime.UtcNow ||
-        (j.SourcePostedDate.HasValue && (j.SourcePostedDate.Value.Date > DateTime.UtcNow.Date || j.SourcePostedDate.Value.Date <= DateTime.UtcNow.Date.AddDays(-30))) ||
-        (j.ExpiryDate.HasValue && j.ExpiryDate.Value.Date < DateTime.UtcNow.Date) ||
-        (j.WalkInEndDate.HasValue ? j.WalkInEndDate.Value.Date < DateTime.UtcNow.Date : (j.WalkInDate.HasValue && j.WalkInDate.Value.Date < DateTime.UtcNow.Date)) ||
-        ((!j.ApplyLink.StartsWith("https://") || j.ApplyLink.Length <= 8) && (!j.ApplyLink.StartsWith("http://") || j.ApplyLink.Length <= 7)) || j.ApplyLink.Contains(" ") ||
-        ((j.ApplyLink.IndexOf("/", j.ApplyLink.IndexOf("://") + 3) < 0 || j.ApplyLink.ToLower().Contains("/?")) &&
-          !(j.ApplyLink.ToLower().Contains("?job") || j.ApplyLink.ToLower().Contains("&job") || j.ApplyLink.ToLower().Contains("vacancy") || j.ApplyLink.ToLower().Contains("requisition") || j.ApplyLink.ToLower().Contains("?req=") || j.ApplyLink.ToLower().Contains("&req=") || j.ApplyLink.ToLower().Contains("?id=") || j.ApplyLink.ToLower().Contains("&id="))) ||
-        j.ApplyLink.IndexOf("/", j.ApplyLink.IndexOf("://") + 3) >= j.ApplyLink.Length - 1 ||
-        j.OfficialSourceUrl == null || ((!j.OfficialSourceUrl.StartsWith("https://") || j.OfficialSourceUrl.Length <= 8) && (!j.OfficialSourceUrl.StartsWith("http://") || j.OfficialSourceUrl.Length <= 7)) || j.OfficialSourceUrl.Contains(" ") ||
-        j.Eligibility == null || j.Eligibility.Trim().Length < MinimumEligibilityLength ||
-        !JobCategories.All.Contains(j.Category) || !JobSourceTypes.All.Contains(j.SourceType ?? "") || j.SourceType == JobSourceTypes.Other ||
-        j.ApplyLink.Contains("@") || j.ApplyLink.ToLower().EndsWith("/careers") ||
-        j.ApplyLink.ToLower().EndsWith("/career") || j.ApplyLink.ToLower().EndsWith("/jobs") ||
-        j.ApplyLink.ToLower().EndsWith("/job") || j.ApplyLink.ToLower().EndsWith("/recruitment") ||
-        j.ApplyLink.ToLower().EndsWith("/vacancies") ||
-        ((j.ApplyLink.ToLower().Contains("/careers?") || j.ApplyLink.ToLower().Contains("/career?") || j.ApplyLink.ToLower().Contains("/jobs?") || j.ApplyLink.ToLower().Contains("/job?") || j.ApplyLink.ToLower().Contains("/recruitment?") || j.ApplyLink.ToLower().Contains("/vacancies?")) &&
-          !(j.ApplyLink.ToLower().Contains("?job") || j.ApplyLink.ToLower().Contains("&job") || j.ApplyLink.ToLower().Contains("vacancy") || j.ApplyLink.ToLower().Contains("requisition") || j.ApplyLink.ToLower().Contains("?req=") || j.ApplyLink.ToLower().Contains("&req=") || j.ApplyLink.ToLower().Contains("?id=") || j.ApplyLink.ToLower().Contains("&id="))) ||
-        (j.ApplyLink.IndexOf("/", j.ApplyLink.IndexOf("://") + 3) < 0 && !j.ApplyLink.Contains("?")) ||
-        (j.ApplyLink.EndsWith("/") && !j.ApplyLink.Contains("?")) ||
-        (j.OfficialSourceUrl != null && j.OfficialSourceUrl.Contains("@")) ||
-        (j.WalkInStartDate.HasValue && j.WalkInEndDate.HasValue && j.WalkInEndDate < j.WalkInStartDate) ||
-        (j.ApplicationInstructions != null && (j.ApplicationInstructions.ToLower().Contains("candidates are advised to read the official notification") ||
-          j.ApplicationInstructions.ToLower().Contains("eligible candidates can apply online through the official website") ||
-          j.ApplicationInstructions.ToLower().Contains("please read the official notification carefully") ||
-          j.ApplicationInstructions.ToLower().Contains("make sure you meet the eligibility criteria before applying") ||
-          j.ApplicationInstructions.ToLower().Contains("apply through the link provided above") ||
-          j.ApplicationInstructions.ToLower().Contains("for more details visit the official website") ||
-          j.ApplicationInstructions.ToLower().Contains("keep checking the official website for updates"))) ||
-        (j.EditorialNote != null && (j.EditorialNote.ToLower().Contains("candidates are advised to read the official notification") ||
-          j.EditorialNote.ToLower().Contains("eligible candidates can apply online through the official website") ||
-          j.EditorialNote.ToLower().Contains("please read the official notification carefully") ||
-          j.EditorialNote.ToLower().Contains("make sure you meet the eligibility criteria before applying") ||
-          j.EditorialNote.ToLower().Contains("apply through the link provided above") ||
-          j.EditorialNote.ToLower().Contains("for more details visit the official website") ||
-          j.EditorialNote.ToLower().Contains("keep checking the official website for updates"))) ||
-        (j.Qualification.ToLower().Contains("verify the full qualification requirements") || j.Qualification.ToLower() == "not specified") ||
-        (j.ApplicationInstructions != null &&
-            (j.ApplicationInstructions.ToLower().Contains("open the applylink") ||
-             j.ApplicationInstructions.ToLower().Contains("officialsourceurl"))) ||
-        (j.EditorialNote != null && j.EditorialNote.ToLower().Contains("d2djobs editorial note for")) ||
-        j.Description.ToLower().Contains("related role context: professionals in this type of position commonly") ||
-        j.Title.ToLower().Contains("roles open") ||
-        j.Title.ToLower().Contains("multiple engineering roles") ||
-        j.Title.ToLower().Contains("multiple companies") || j.Title.ToLower().Contains("various companies") ||
-        j.Title.ToLower().Contains("top 10") || j.Title.ToLower().Contains("best companies") || j.Title.ToLower().Contains("job fair") ||
-        j.Title.ToLower().Contains("job placement course") || j.Title.ToLower().Contains("recruitment course") || j.Title.ToLower().Contains("top companies hiring") ||
-        j.Title.ToLower().Contains("top 5") || j.Title.ToLower().Contains("top 20") || j.Title.ToLower().Contains("online job course") ||
-        j.Title.ToLower().Contains("career coaching course") ||
-        j.CompanyName.ToLower().Contains("multiple companies") || j.CompanyName.ToLower().Contains("various companies") ||
-        j.CompanyName.ToLower().Contains("multiple employers") || j.CompanyName.ToLower().Contains("various employers") ||
-        j.Role.ToLower().Contains("job placement course") || j.Role.ToLower().Contains("career coaching course") ||
-        j.Description.ToLower().Contains("multiple openings across companies") || j.Description.ToLower().Contains("course enrollment") ||
-        j.Description.ToLower().Contains("course fee") || j.Description.ToLower().Contains("top companies hiring") ||
-        j.Description.ToLower().Contains("course for job placement");
+    public static Expression<Func<Job, bool>> NeedsReview(DateTime verifiedAfterUtc)
+    {
+        var publishable = ReadyForIndex(verifiedAfterUtc);
+        return Expression.Lambda<Func<Job, bool>>(Expression.Not(publishable.Body), publishable.Parameters);
+    }
 
     public static bool ContainsInternalApplicationFields(string? value) =>
         !string.IsNullOrWhiteSpace(value) &&
@@ -164,17 +127,21 @@ public static class JobQuality
         AddIf(issues, job.SelectionProcess, MinimumSelectionProcessLength, "selection process");
         AddIf(issues, job.ApplicationInstructions, MinimumApplicationInstructionsLength, "job-specific application instructions");
         AddIf(issues, job.EditorialNote, MinimumEditorialNoteLength, "D2DJobs editorial guidance");
-        if ((job.Qualification ?? string.Empty).Contains("verify the full qualification requirements", StringComparison.OrdinalIgnoreCase) ||
-            string.Equals(job.Qualification, "Not Specified", StringComparison.OrdinalIgnoreCase))
+        if (HasQualificationPlaceholder(job.Qualification))
             issues.Add("replace generic qualification placeholder with source-verified eligibility or an honest unknown status");
         if (ContainsInternalApplicationFields(job.ApplicationInstructions))
-            issues.Add("replace ApplyLink/OfficialSourceUrl field names with real candidate-facing application instructions");
+            issues.Add("replace internal field references with real candidate-facing application instructions");
         if ((job.EditorialNote ?? "").Contains("D2DJobs editorial note for", StringComparison.OrdinalIgnoreCase))
             issues.Add("replace templated editorial note with genuinely useful, original vacancy-specific guidance");
         if ((job.Description ?? string.Empty).Contains("related role context: professionals in this type of position commonly", StringComparison.OrdinalIgnoreCase))
             issues.Add("verify responsibilities and remove generic boilerplate copied across job pages");
+        if (job.SelectionProcess?.Contains("selection stages are not clearly stated", StringComparison.OrdinalIgnoreCase) == true ||
+            job.SelectionProcess?.Contains("verify the official employer posting for screening", StringComparison.OrdinalIgnoreCase) == true)
+            issues.Add("replace templated selection text with source-confirmed stages or a clear statement that details are unavailable");
         if (job.Title.Contains("roles open", StringComparison.OrdinalIgnoreCase))
             issues.Add("review multi-role advert and create individually verified vacancy pages where appropriate");
+        if (job.Title.Contains("multiple engineering roles", StringComparison.OrdinalIgnoreCase))
+            issues.Add("review the multi-role advert and create individually verified vacancy pages where appropriate");
         if (!JobCategories.IsSupported(job.Category)) issues.Add("supported job category");
         if (JobSourceTypes.Normalize(job.SourceType) == null) issues.Add("source type (OfficialEmployer, GovernmentPortal, JobPortal, or Other)");
         else if (JobSourceTypes.Normalize(job.SourceType) == JobSourceTypes.Other) issues.Add("a source type with a clear employer or recruitment authority");
@@ -189,21 +156,45 @@ public static class JobQuality
         if (job.WalkInStartDate.HasValue && job.WalkInEndDate.HasValue && job.WalkInEndDate < job.WalkInStartDate) issues.Add("valid walk-in date range");
         if (job.SourcePostedDate.HasValue && job.SourcePostedDate.Value.Date > DateTime.UtcNow.Date) issues.Add("source posting date not in the future");
         if (job.SourcePostedDate.HasValue && job.SourcePostedDate.Value.Date <= (utcNow ?? DateTime.UtcNow).Date.AddDays(-30)) issues.Add("recruitment notice is older than 30 days");
+        if (!job.SourcePostedDate.HasValue && job.PostedDate.Date <= (utcNow ?? DateTime.UtcNow).Date.AddDays(-30)) issues.Add("listing is older than 30 days; recheck the source or close the listing");
         if (job.ExpiryDate.HasValue && job.ExpiryDate.Value.Date < (utcNow ?? DateTime.UtcNow).Date) issues.Add("recruitment closing date has passed");
         var walkInEnd = job.WalkInEndDate ?? job.WalkInDate;
         if (walkInEnd.HasValue && walkInEnd.Value.Date < (utcNow ?? DateTime.UtcNow).Date) issues.Add("walk-in recruitment date has passed");
         if (!walkInEnd.HasValue && job.IsExpired((utcNow ?? DateTime.UtcNow).Date) && !job.ExpiryDate.HasValue && !job.SourcePostedDate.HasValue)
             issues.Add("listing is older than 30 days; recheck the source or close the listing");
+        if (job.BatchFrom.HasValue != job.BatchTo.HasValue || (job.BatchFrom.HasValue && job.BatchTo.HasValue && job.BatchFrom > job.BatchTo))
+            issues.Add("enter a complete graduation batch range in ascending order, or leave both years blank");
         return issues;
     }
+
+    public static bool HasQualificationPlaceholder(string? value) =>
+        !string.IsNullOrWhiteSpace(value) &&
+        (value.Contains("verify the full qualification requirements", StringComparison.OrdinalIgnoreCase) ||
+         string.Equals(value.Trim(), "Not Specified", StringComparison.OrdinalIgnoreCase));
+
+    public static bool HasTemplatedEditorial(string? value) =>
+        !string.IsNullOrWhiteSpace(value) && value.Contains("D2DJobs editorial note for", StringComparison.OrdinalIgnoreCase);
+
+    public static bool HasGenericRoleBoilerplate(string? value) =>
+        !string.IsNullOrWhiteSpace(value) && value.Contains("related role context: professionals in this type of position commonly", StringComparison.OrdinalIgnoreCase);
 
     private static void AddIf(List<string> issues, string? value, int minimumLength, string label)
     {
         if (string.IsNullOrWhiteSpace(value) || value.Trim().Length < minimumLength) issues.Add(label);
     }
 
-    private static bool ValidHttpUrl(string? value) => Uri.TryCreate(value, UriKind.Absolute, out var uri) &&
-        uri.Scheme is "https" or "http" && string.IsNullOrEmpty(uri.UserInfo);
+    private static bool ValidHttpUrl(string? value)
+    {
+        if (string.IsNullOrWhiteSpace(value) || !Uri.TryCreate(value, UriKind.Absolute, out var uri) ||
+            uri.Scheme is not ("https" or "http") || !string.IsNullOrEmpty(uri.UserInfo)) return false;
+        var schemeEnd = value.IndexOf("://", StringComparison.Ordinal);
+        if (schemeEnd < 0) return false;
+        var authorityStart = schemeEnd + 3;
+        var authorityEnd = value.IndexOfAny(['/', '?', '#'], authorityStart);
+        if (authorityEnd < 0) authorityEnd = value.Length;
+        var authority = value[authorityStart..authorityEnd];
+        return authority.Length > 0 && !authority.StartsWith(":", StringComparison.Ordinal);
+    }
 
     public static bool IsGenericApplicationUrl(string? value)
     {
