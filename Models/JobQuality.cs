@@ -111,12 +111,30 @@ public static class JobQuality
         !j.ApplyLink.ToLower().EndsWith("/recruitment") && !j.ApplyLink.ToLower().EndsWith("/vacancies");
 
     public static Expression<Func<Job, bool>> HasUnusableApplicationUrl() => j =>
+        j.ApplyLink == null ||
         !((j.ApplyLink.StartsWith("https://") && j.ApplyLink.Length > 8 && !j.ApplyLink.Substring(8).StartsWith("/") && !j.ApplyLink.Substring(8).StartsWith("?") && !j.ApplyLink.Substring(8).StartsWith("#") && !j.ApplyLink.Substring(8).StartsWith(":")) ||
           (j.ApplyLink.StartsWith("http://") && j.ApplyLink.Length > 7 && !j.ApplyLink.Substring(7).StartsWith("/") && !j.ApplyLink.Substring(7).StartsWith("?") && !j.ApplyLink.Substring(7).StartsWith("#") && !j.ApplyLink.Substring(7).StartsWith(":"))) ||
         j.ApplyLink.Contains(" ") || j.ApplyLink.Contains("@") ||
         j.ApplyLink.ToLower().EndsWith("/careers") || j.ApplyLink.ToLower().EndsWith("/career") ||
         j.ApplyLink.ToLower().EndsWith("/jobs") || j.ApplyLink.ToLower().EndsWith("/job") ||
         j.ApplyLink.ToLower().EndsWith("/recruitment") || j.ApplyLink.ToLower().EndsWith("/vacancies");
+
+    public static Expression<Func<Job, bool>> HasUsableOfficialSourceUrl() => j =>
+        j.OfficialSourceUrl != null &&
+        ((j.OfficialSourceUrl.StartsWith("https://") && j.OfficialSourceUrl.Length > 8) ||
+         (j.OfficialSourceUrl.StartsWith("http://") && j.OfficialSourceUrl.Length > 7)) &&
+        !j.OfficialSourceUrl.Contains(" ") && !j.OfficialSourceUrl.Contains("@");
+
+    public static Expression<Func<Job, bool>> HasUnusableOfficialSourceUrl() => j =>
+        j.OfficialSourceUrl == null ||
+        !((j.OfficialSourceUrl.StartsWith("https://") && j.OfficialSourceUrl.Length > 8) ||
+          (j.OfficialSourceUrl.StartsWith("http://") && j.OfficialSourceUrl.Length > 7)) ||
+        j.OfficialSourceUrl.Contains(" ") || j.OfficialSourceUrl.Contains("@");
+
+    public static Expression<Func<Job, bool>> HasInternalApplicationFieldText() => j =>
+        j.ApplicationInstructions != null &&
+        (j.ApplicationInstructions.ToLower().Contains("applylink") ||
+         j.ApplicationInstructions.ToLower().Contains("officialsourceurl"));
 
     public static Expression<Func<Job, bool>> NeedsReview(DateTime verifiedAfterUtc)
     {

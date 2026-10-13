@@ -78,7 +78,6 @@ public class AdminController(ApplicationDbContext db, IWebHostEnvironment enviro
              (j.WalkInEndDate.HasValue ? j.WalkInEndDate.Value.Date < today : j.WalkInDate.HasValue && j.WalkInDate.Value.Date < today) ||
              (j.SourcePostedDate ?? j.PostedDate).Date <= today.AddDays(-30)));
         ViewBag.TotalJobs = totals?.Total ?? 0; ViewBag.FeaturedJobs = totals?.Featured ?? 0; ViewBag.ActiveJobs = totals?.Active ?? 0; ViewBag.ExpiredJobs = expiredCount;
-        ViewBag.UnusableApplicationLinkJobs = await db.Jobs.AsNoTracking().Where(JobQuality.HasUnusableApplicationUrl()).CountAsync();
         var jobs = db.Jobs.AsNoTracking(); search = search?.Trim();
         if (!string.IsNullOrEmpty(search)) jobs = jobs.Where(j => j.Title.Contains(search) || j.CompanyName.Contains(search) || j.Location.Contains(search) || j.Skills.Contains(search));
         if (!string.IsNullOrEmpty(category)) jobs = jobs.Where(j => j.Category == category);
@@ -95,13 +94,27 @@ public class AdminController(ApplicationDbContext db, IWebHostEnvironment enviro
              j.Location.Trim().ToLower() != other.Location.Trim().ToLower())))
             .Select(j => j.Id);
         ViewBag.DetailsMismatchJobs = await detailsMismatchIds.CountAsync();
-        var duplicateIds = recentJobsForDuplicates.Where(j => recentJobsForDuplicates.Any(other =>
-            other.Id != j.Id && ((j.ApplyLink != "" && j.ApplyLink == other.ApplyLink) ||
-                (j.CompanyName.Trim().ToLower().Replace(" private limited", "").Replace(" pvt. ltd.", "").Replace(" pvt ltd", "").Replace(" limited", "").Replace(" ltd.", "").Replace(" ltd", "").Trim() ==
-                 other.CompanyName.Trim().ToLower().Replace(" private limited", "").Replace(" pvt. ltd.", "").Replace(" pvt ltd", "").Replace(" limited", "").Replace(" ltd.", "").Replace(" ltd", "").Trim() &&
-                 j.Role.Trim() != "" && j.Role.Trim().ToLower() == other.Role.Trim().ToLower() && j.Location.Trim() != "" && j.Location.Trim().ToLower() == other.Location.Trim().ToLower()))))
+        var duplicateIds = recentJobsForDuplicates
+            .Where(j => recentJobsForDuplicates.Any(other => other.Id != j.Id &&
+                (
+                    (j.ApplyLink != "" && j.ApplyLink == other.ApplyLink) ||
+                    (j.CompanyName.Trim().ToLower().Replace(" private limited", "").Replace(" pvt. ltd.", "").Replace(" pvt ltd", "").Replace(" limited", "").Replace(" ltd.", "").Replace(" ltd", "").Trim() ==
+                     other.CompanyName.Trim().ToLower().Replace(" private limited", "").Replace(" pvt. ltd.", "").Replace(" pvt ltd", "").Replace(" limited", "").Replace(" ltd.", "").Replace(" ltd", "").Trim() &&
+                     j.Role.Trim() != "" && j.Role.Trim().ToLower() == other.Role.Trim().ToLower() &&
+                     j.Location.Trim() != "" && j.Location.Trim().ToLower() == other.Location.Trim().ToLower()) ||
+                    (j.ApplicationInstructions != null && j.ApplicationInstructions.Trim() != "" &&
+                     other.ApplicationInstructions != null && other.ApplicationInstructions.Trim() == j.ApplicationInstructions.Trim()) ||
+                    (j.EditorialNote != null && j.EditorialNote.Trim() != "" &&
+                     other.EditorialNote != null && other.EditorialNote.Trim() == j.EditorialNote.Trim())
+                )))
             .Select(j => j.Id);
         ViewBag.DuplicateJobs = await duplicateIds.CountAsync();
+        var unusableLinkIds = recentJobsForDuplicates.Where(JobQuality.HasUnusableApplicationUrl()).Select(j => j.Id);
+        var unusableSourceIds = recentJobsForDuplicates.Where(JobQuality.HasUnusableOfficialSourceUrl()).Select(j => j.Id);
+        var internalInstructionIds = recentJobsForDuplicates.Where(JobQuality.HasInternalApplicationFieldText()).Select(j => j.Id);
+        ViewBag.UnusableApplicationLinkJobs = await recentJobsForDuplicates.Where(j =>
+            unusableLinkIds.Contains(j.Id) || unusableSourceIds.Contains(j.Id) ||
+            internalInstructionIds.Contains(j.Id) || duplicateIds.Contains(j.Id)).CountAsync();
         metric = metric is "all" or "active" or "expired" or "featured" or "application" or "duplicate" or "mismatch" ? metric : null;
         jobs = metric switch
         {
@@ -109,7 +122,9 @@ public class AdminController(ApplicationDbContext db, IWebHostEnvironment enviro
                 (j.SourcePostedDate ?? j.PostedDate).Date > today.AddDays(-30)),
             "expired" => jobs.Where(j => j.IsActive && ((j.ExpiryDate.HasValue && j.ExpiryDate.Value.Date < today) || (j.WalkInEndDate.HasValue ? j.WalkInEndDate.Value.Date < today : j.WalkInDate.HasValue && j.WalkInDate.Value.Date < today) || (j.SourcePostedDate ?? j.PostedDate).Date <= today.AddDays(-30))),
             "featured" => jobs.Where(j => j.IsFeatured),
-            "application" => jobs.Where(JobQuality.HasUnusableApplicationUrl()),
+            "application" => jobs.Where(j =>
+                unusableLinkIds.Contains(j.Id) || unusableSourceIds.Contains(j.Id) ||
+                internalInstructionIds.Contains(j.Id) || duplicateIds.Contains(j.Id)),
             "duplicate" => jobs.Where(j => duplicateIds.Contains(j.Id)),
             "mismatch" => jobs.Where(j => detailsMismatchIds.Contains(j.Id)),
             "all" => jobs,
@@ -137,7 +152,7 @@ public class AdminController(ApplicationDbContext db, IWebHostEnvironment enviro
         if (pageJobs.Count > 0)
         {
             var pageIds = pageJobs.Select(job => job.Id).ToArray();
-            pagePubliclyDiscoverableIds = (await recentJobsForDuplicates.Where(JobQuality.HasUsableApplicationUrl()).Where(j => !duplicateIds.Contains(j.Id)).Select(j => j.Id).Where(id => pageIds.Contains(id)).ToListAsync()).ToHashSet();
+            pagePubliclyDiscoverableIds = (await recentJobsForDuplicates.Where(JobQuality.HasUsableApplicationUrl()).Where(JobQuality.HasUsableOfficialSourceUrl()).Where(j => !duplicateIds.Contains(j.Id)).Select(j => j.Id).Where(id => pageIds.Contains(id)).ToListAsync()).ToHashSet();
         }
         ViewBag.PubliclyDiscoverableJobIds = pagePubliclyDiscoverableIds;
         return View(pageJobs);
