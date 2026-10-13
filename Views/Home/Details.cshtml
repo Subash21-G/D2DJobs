@@ -12,7 +12,7 @@ bool genericRoleBoilerplate = JobQuality.HasGenericRoleBoilerplate(Model.Descrip
 bool templatedEditorial = JobQuality.HasTemplatedEditorial(Model.EditorialNote);
 bool templatedSelection = Model.SelectionProcess?.Contains("selection stages are not clearly stated", StringComparison.OrdinalIgnoreCase) == true ||
     Model.SelectionProcess?.Contains("verify the official employer posting for screening", StringComparison.OrdinalIgnoreCase) == true;
-bool canApply = discoverable && !expired && !internalInstructions && Uri.TryCreate(Model.ApplyLink, UriKind.Absolute, out var applyUri) && (applyUri.Scheme == "https" || applyUri.Scheme == "http");
+bool canApply = discoverable && !expired && !internalInstructions && !JobQuality.IsGenericApplicationUrl(Model.ApplyLink) && Uri.TryCreate(Model.ApplyLink, UriKind.Absolute, out var applyUri) && (applyUri.Scheme == "https" || applyUri.Scheme == "http");
 string reportSubject = Uri.EscapeDataString("Report job listing: " + Model.Title);
 string reportBody = Uri.EscapeDataString($"Listing: {Context.Request.Scheme}://{Context.Request.Host}/job/{Model.Slug}\n\nIssue (expired, incorrect details, broken link or other):\n\nDetails:");
 // Use the same canonical job URL for sharing and structured data.
@@ -48,7 +48,7 @@ var shareLines = new List<string> { $"\U0001F680 {Model.Title}", "" };
 foreach (var (label, value) in new[] {
     ("\U0001F3E2 Company", Model.CompanyName),
     ("\U0001F4BC Role", Model.Role),
-    ("\U0001F393 Eligibility", qualificationPlaceholder ? "Qualification details are being reviewed." : Model.Qualification),
+    ("\U0001F393 Eligibility", qualificationPlaceholder ? "Not specified in the source posting" : Model.Qualification),
     ("\U0001F468\u200D\U0001F4BB Experience", Model.Experience),
     ("\U0001F4B0 Salary", Model.Salary),
     ("\U0001F4CD Location", Model.Location)
@@ -119,7 +119,7 @@ var breadcrumbSchema = new Dictionary<string, object>
 <div class="detail-company"><div class="company-avatar">@if (!string.IsNullOrEmpty(Model.CompanyLogo)) { <img src="~/uploads/logos/@Model.CompanyLogo" alt="@Model.CompanyName logo" /> } else { <span>@(string.IsNullOrWhiteSpace(Model.CompanyName) ? "D2D" : Model.CompanyName[..1].ToUpperInvariant())</span> }</div><span>@Model.CompanyName</span>@if (Model.IsFeatured) { <span class="featured-badge">Featured</span> }</div>
 <h1><span aria-hidden="true">&#x1F680;</span> @Model.Title</h1><p class="detail-meta">@if(Model.SourcePostedDate.HasValue){<span>Posted @Model.SourcePostedDate.Value.ToString("dd MMM yyyy")</span>}else{<span>Added to D2DJobs @displayAddedAt.ToString("dd MMM yyyy")</span>} · @Model.Location</p>
 @if (expired) { <div class="application-note"><strong>This opening has expired</strong>The closing date has passed or 30 days have elapsed since this job was posted. This page is retained only as a reference and is excluded from search indexing, feeds, category pages, and the sitemap.</div> }
-else if (!discoverable) { <div class="application-note"><strong>This listing is under review</strong>We are checking its source, application link and recruitment details. Applications are temporarily unavailable from this page.</div> }
+else if (!discoverable && !expired) { <div class="application-note"><strong>This listing is unavailable</strong>The job is inactive, expired, duplicated, or its application/source link is unavailable.</div> }
 <partial name="_JobDeadline" model="Model" />
 <div class="apply-actions">
 @if (!expired && !saved) { <form method="post" asp-action="SaveJob" asp-route-id="@Model.Id"><button class="secondary-button" type="submit"><i class="fa-regular fa-bookmark" aria-hidden="true"></i> Save job</button></form> }
@@ -130,7 +130,7 @@ else if (!discoverable) { <div class="application-note"><strong>This listing is 
 @foreach (var (icon, label, value) in new[] {
     ("\U0001F3E2", "Company", Model.CompanyName),
     ("\U0001F4BC", "Job Role", Model.Role),
-    ("\U0001F393", "Qualification", qualificationPlaceholder ? "Qualification details are being reviewed." : Model.Qualification),
+    ("\U0001F393", "Qualification", qualificationPlaceholder ? "Not specified in the source posting" : Model.Qualification),
     ("\U0001F468\u200D\U0001F4BB", "Experience", Model.Experience),
     ("\U0001F4B0", "Salary/CTC", Model.Salary),
     ("\U0001F4CD", "Location", Model.Location),
@@ -198,11 +198,11 @@ else if (!discoverable) { <div class="application-note"><strong>This listing is 
 @if (internalInstructions) { <p class="muted">Application steps are being checked by our editors. Confirm the specific vacancy and instructions on the linked recruitment source before applying.</p> }
 else if (canApply) { <div class="description-text">@Model.ApplicationInstructions</div> }
 else if (expired) { <p class="muted">Applications are no longer accepted through this listing.</p> }
-else if (!discoverable) { <p class="muted">This historical listing is under review. Please use the official source link above to check current recruitment details.</p> }
+else if (!discoverable) { <p class="muted">This listing has no available application action. Check the source posting for current recruitment details.</p> }
 else { <p class="muted">The application action is unavailable. Check the linked recruitment source for current information.</p> }
 <div class="apply-actions">
 @if (canApply) { <a class="primary-button" asp-action="ApplyClick" asp-route-id="@Model.Id" target="_blank" rel="noopener noreferrer">@applyLinkLabel &nearr;</a> }
-else if (!discoverable && !expired) { <span class="application-unavailable">Application temporarily unavailable while this listing is reviewed</span> }
+else if (!discoverable && !expired) { <span class="application-unavailable">Application link unavailable</span> }
 else { <span class="application-unavailable">Application link unavailable</span> }
 </div>
 <div class="application-note"><strong>Apply safely</strong>Verify the opening on the employer's official website. Never pay a fee to secure a job.</div>

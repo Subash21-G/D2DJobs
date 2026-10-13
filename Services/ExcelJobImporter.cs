@@ -37,7 +37,7 @@ public sealed class ExcelJobImporter
         ["last verified"] = nameof(Job.LastVerifiedUtc)
     };
 
-    public List<Job> Read(Stream input, List<string> errors, List<string>? warnings = null)
+    public List<Job> Read(Stream input, List<string> errors)
     {
         using var archive = new ZipArchive(input, ZipArchiveMode.Read, leaveOpen: false);
         var shared = ReadSharedStrings(archive);
@@ -74,11 +74,6 @@ public sealed class ExcelJobImporter
             }
             if (values.Count == 0 || values.Values.All(string.IsNullOrWhiteSpace)) continue;
 
-            if (!string.IsNullOrWhiteSpace(Get(values, nameof(Job.LastVerifiedUtc))))
-                warnings?.Add($"Row {rowNumber + 1}: LastVerifiedUtc was ignored. Check the source in the admin form and record the date there.");
-            if (!string.IsNullOrWhiteSpace(Get(values, nameof(Job.IsActive))))
-                warnings?.Add($"Row {rowNumber + 1}: IsActive was ignored. Imported listings always start as inactive drafts.");
-
             var job = BuildJob(values, rowNumber + 1, errors);
             if (job != null) jobs.Add(job);
         }
@@ -92,7 +87,7 @@ public sealed class ExcelJobImporter
             Title = Get(values, nameof(Job.Title)),
             CompanyName = Get(values, nameof(Job.CompanyName)),
             Category = JobCategories.Normalize(Get(values, nameof(Job.Category))) ?? Get(values, nameof(Job.Category)),
-            SourceType = JobSourceTypes.Normalize(Get(values, nameof(Job.SourceType))),
+            SourceType = JobSourceTypes.Resolve(Get(values, nameof(Job.SourceType)), Get(values, nameof(Job.OfficialSourceUrl)), Get(values, nameof(Job.CompanyName))),
             SubCategory = Get(values, nameof(Job.SubCategory)),
             Role = Get(values, nameof(Job.Role)),
             Location = Get(values, nameof(Job.Location)),
@@ -110,7 +105,8 @@ public sealed class ExcelJobImporter
             EditorialNote = Get(values, nameof(Job.EditorialNote)),
             WalkInVenue = Get(values, nameof(Job.WalkInVenue)),
             OfficialSourceUrl = Get(values, nameof(Job.OfficialSourceUrl)),
-            IsActive = false,
+            // Admin Excel uploads are explicitly treated as publisher-reviewed submissions.
+            IsActive = true,
             IsFeatured = ParseBool(values, nameof(Job.IsFeatured), false, rowNumber, errors)
         };
         if (TryInt(values, nameof(Job.BatchFrom), rowNumber, errors, out var batchFrom)) job.BatchFrom = batchFrom;

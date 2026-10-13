@@ -2,33 +2,17 @@
 @{
     ViewData["Title"] = "Admin overview";
     var top = ViewBag.TopViewedJobs as List<Job> ?? new();
-    var reviewMetrics = new[] {
-        ("Inactive drafts", (int)ViewBag.DraftJobs, "inactive"),
-        ("Needs review", (int)ViewBag.ReviewJobs, "review"),
-        ("Possible duplicates", (int)ViewBag.DuplicateCandidates, "duplicate"),
-        ("Missing source checks", (int)ViewBag.MissingVerifiedSources, "source"),
-        ("Broken application URLs", (int)ViewBag.BrokenApplicationUrls, "application"),
-        ("Eligible for indexing", (int)ViewBag.IndexEligibleJobs, "indexable"),
-        ("Active jobs excluded from discovery", (int)ViewBag.PublicDiscoveryExcludedJobs, "excluded")
-    };
     var summaryMetrics = new[] {
         ("Total jobs", (int)ViewBag.TotalJobs, "all"),
         ("Active openings", (int)ViewBag.ActiveJobs, "active"),
         ("Expired listings", (int)ViewBag.ExpiredJobs, "expired"),
         ("Featured jobs", (int)ViewBag.FeaturedJobs, "featured")
     };
-    var reviewReasonsByJob = ViewBag.NeedsReviewReasons as Dictionary<int, string[]> ?? new();
+    var publiclyDiscoverableJobIds = ViewBag.PubliclyDiscoverableJobIds as HashSet<int> ?? new();
 }
 @if (TempData["Notice"] is string notice) { <p class="notice" role="status">@notice</p> }
-<div class="admin-metrics" aria-label="Editorial review metrics">
-    @foreach (var item in reviewMetrics) {
-        <button type="button" class="admin-panel metric metric-filter" data-metric-filter="@item.Item3" aria-pressed="@((string?)ViewBag.Metric == item.Item3)">
-            <span>@item.Item1</span><strong>@item.Item2</strong><small>Tap to show matching jobs</small>
-        </button>
-    }
-</div>
 <div class="admin-heading">
-    <div><span class="eyebrow">WORKSPACE OVERVIEW</span><h1>Manage your job listings</h1><p class="muted">Review listing quality, update openings and keep information current.</p></div>
+    <div><span class="eyebrow">WORKSPACE OVERVIEW</span><h1>Manage your job listings</h1><p class="muted">Set each job to Active to publish it, or Inactive to hide it.</p></div>
     <a class="primary-button" asp-action="Create">+ Create a job</a><a class="secondary-button" asp-action="Import">Import Excel</a>
 </div>
 <div class="admin-metrics" aria-label="Job totals">
@@ -43,7 +27,7 @@
     <form method="get" class="admin-filters"><input type="hidden" name="metric" value="@ViewBag.Metric" />
         <div class="admin-field"><label for="search">Search jobs</label><input id="search" name="search" value="@ViewBag.Search" placeholder="Title, company, location or skill" /></div>
         <div class="admin-field"><label for="category">Category</label><select id="category" name="category"><option value="">All categories</option>@foreach (var category in JobCategories.All) { <option value="@category" selected="@(ViewBag.Category == category)">@category</option> }</select></div>
-        <div class="admin-field"><label for="status">Status</label><select id="status" name="status"><option value="">All statuses</option>@foreach (var status in new[] { "Active", "Inactive", "Expired", "Needs review" }) { <option value="@status" selected="@(ViewBag.Status == status)">@status</option> }</select></div>
+        <div class="admin-field"><label for="status">Status</label><select id="status" name="status"><option value="">All statuses</option>@foreach (var status in new[] { "Active", "Inactive", "Expired" }) { <option value="@status" selected="@(ViewBag.Status == status)">@status</option> }</select></div>
         <div class="admin-field"><label for="recentDays">Recently added</label><select id="recentDays" name="recentDays"><option value="0" selected="@(ViewBag.RecentDays == 0)">Any time</option><option value="7" selected="@(ViewBag.RecentDays == 7)">Last 7 days</option><option value="30" selected="@(ViewBag.RecentDays == 30)">Last 30 days</option><option value="90" selected="@(ViewBag.RecentDays == 90)">Last 90 days</option></select></div>
         <div class="admin-field"><label for="dateOrder">Date order</label><select id="dateOrder" name="dateOrder"><option value="newest" selected="@(ViewBag.DateOrder == "newest")">Newest first</option><option value="oldest" selected="@(ViewBag.DateOrder == "oldest")">Oldest first</option></select></div>
         <div class="admin-field"><label for="addedFrom">Added from</label><input id="addedFrom" name="addedFrom" type="date" value="@ViewBag.AddedFrom" /></div>
@@ -59,10 +43,11 @@
         <div class="table-responsive"><table class="admin-job-table"><thead><tr><th class="admin-select-cell"><input type="checkbox" data-select-all-jobs aria-label="Select all jobs on this page" /></th><th>Opportunity</th><th>Status</th><th>Performance</th><th>Added</th><th>Manage</th></tr></thead><tbody>
         @foreach (var job in Model) {
             var status = !job.IsActive ? "Inactive" : job.IsExpired(DateTime.Today) ? "Expired" : "Active";
+            var publiclyDiscoverable = publiclyDiscoverableJobIds.Contains(job.Id);
             <tr>
                 <td class="admin-select-cell" data-label="Select"><input type="checkbox" form="bulk-delete-jobs" name="jobIds" value="@job.Id" data-job-select aria-label="Select @job.Title" /></td>
-                <td data-label="Opportunity"><strong>@job.Title</strong><small>@job.CompanyName &middot; @job.Location</small><small>@job.Category &middot; @(JobSourceTypes.Label(job.SourceType))</small>@if (reviewReasonsByJob.TryGetValue(job.Id, out var jobReasons)) { <small class="review-reasons"><strong>Review:</strong> @string.Join("; ", jobReasons)</small> }</td>
-                <td data-label="Status"><span class="status-badge status-@status.ToLowerInvariant()">@status</span></td>
+                <td data-label="Opportunity"><strong>@job.Title</strong><small>@job.CompanyName &middot; @job.Location</small><small>@job.Category &middot; @(JobSourceTypes.Label(job.SourceType))</small></td>
+                <td data-label="Status"><span class="status-badge status-@status.ToLowerInvariant()">@status</span>@if (job.IsActive) { <small class="public-state @(publiclyDiscoverable ? "public-state-visible" : "public-state-hidden")">@(publiclyDiscoverable ? "Shown on public site" : "Not shown: duplicate/link/date issue")</small> }</td>
                 <td data-label="Performance">@job.ViewsCount views<small>@job.ApplyClicks application clicks</small></td>
                 <td data-label="Added">@((job.ImportedUtc ?? job.PostedDate.ToUniversalTime()).ToLocalTime().ToString("dd MMM yyyy"))</td>
                 <td data-label="Manage"><div class="admin-row-actions"><a class="secondary-button" asp-action="Edit" asp-route-id="@job.Id">Edit</a>@if (job.IsActive && !string.IsNullOrEmpty(job.Slug)) { <a class="secondary-button" asp-controller="Home" asp-action="Details" asp-route-slug="@job.Slug">View</a> }<form method="post" asp-action="Delete" asp-route-id="@job.Id" data-confirm-delete><button class="danger-button" type="submit">Delete</button></form><partial name="_CopyShareText" model="job" /></div></td>
