@@ -6,7 +6,10 @@
         ("Total jobs", (int)ViewBag.TotalJobs, "all"),
         ("Active openings", (int)ViewBag.ActiveJobs, "active"),
         ("Expired listings", (int)ViewBag.ExpiredJobs, "expired"),
-        ("Featured jobs", (int)ViewBag.FeaturedJobs, "featured")
+        ("Featured jobs", (int)ViewBag.FeaturedJobs, "featured"),
+        ("Application link unavailable", (int)ViewBag.UnusableApplicationLinkJobs, "application"),
+        ("Possible duplicates", (int)ViewBag.DuplicateJobs, "duplicate"),
+        ("Potential details mismatch", (int)ViewBag.DetailsMismatchJobs, "mismatch")
     };
     var publiclyDiscoverableJobIds = ViewBag.PubliclyDiscoverableJobIds as HashSet<int> ?? new();
 }
