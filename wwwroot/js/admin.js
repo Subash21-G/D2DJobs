@@ -1,28 +1,13 @@
 (() => {
  const metricCards=[...document.querySelectorAll('[data-metric-filter]')];
- const jobRows=[...document.querySelectorAll('[data-job-status]')];
  metricCards.forEach(card=>card.addEventListener('click',()=>{
-  const wasActive=card.getAttribute('aria-pressed')==='true';
-  metricCards.forEach(item=>item.setAttribute('aria-pressed','false'));
-  if(wasActive){jobRows.forEach(row=>row.hidden=false);return;}
-  card.setAttribute('aria-pressed','true');
+  const params=new URLSearchParams(window.location.search);
   const filter=card.dataset.metricFilter;
-  jobRows.forEach(row=>{
-   let matches=true;
-   switch(filter){
-    case 'Inactive': matches=row.dataset.jobStatus==='Inactive'; break;
-    case 'Active': matches=row.dataset.jobStatus==='Active'; break;
-    case 'Expired': matches=row.dataset.jobStatus==='Expired'; break;
-    case 'Needs review': matches=row.dataset.jobReview==='true'; break;
-    case 'Possible duplicates': matches=row.dataset.jobDuplicate==='true'; break;
-    case 'Missing source checks': matches=row.dataset.jobSource==='missing'; break;
-    case 'Broken application URLs': matches=row.dataset.jobApplication==='broken'; break;
-    case 'Eligible for indexing': matches=row.dataset.jobIndexable==='true'; break;
-    case 'Active jobs excluded from discovery': matches=row.dataset.jobStatus==='Active'&&row.dataset.jobIndexable!=='true'; break;
-   }
-   row.hidden=!matches;
-  });
-  document.querySelector('.admin-job-table')?.scrollIntoView({behavior:'smooth',block:'start'});
+  if(params.get('metric')===filter)params.delete('metric');
+  else params.set('metric',filter);
+  params.delete('page');
+  const query=params.toString();
+  window.location.assign(window.location.pathname+(query?'?'+query:''));
  }));
  document.querySelectorAll('[data-copy-share-text]').forEach(button => {
   let resetTimer;
