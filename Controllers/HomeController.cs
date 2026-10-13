@@ -28,7 +28,18 @@ public class HomeController : Controller
     private IQueryable<Job> DiscoverableJobs()
     {
         var recent = AvailableJobs();
-        var checkedJobs = recent.Where(JobQuality.ReadyForIndex(JobQuality.VerificationCutoff()));
+        // Active is the editor's explicit publication control. Keep objective
+        // availability, duplicate, and vacancy-specific application URL checks.
+        var checkedJobs = recent.Where(j =>
+            j.ApplyLink != null &&
+            (j.ApplyLink.StartsWith("https://") || j.ApplyLink.StartsWith("http://")) &&
+            !j.ApplyLink.Contains(" ") && !j.ApplyLink.Contains("@") &&
+            !j.ApplyLink.ToLower().EndsWith("/careers") && !j.ApplyLink.ToLower().EndsWith("/career") &&
+            !j.ApplyLink.ToLower().EndsWith("/jobs") && !j.ApplyLink.ToLower().EndsWith("/job") &&
+            !j.ApplyLink.ToLower().EndsWith("/recruitment") && !j.ApplyLink.ToLower().EndsWith("/vacancies") &&
+            j.OfficialSourceUrl != null &&
+            (j.OfficialSourceUrl.StartsWith("https://") || j.OfficialSourceUrl.StartsWith("http://")) &&
+            !j.OfficialSourceUrl.Contains(" ") && !j.OfficialSourceUrl.Contains("@"));
         return checkedJobs.Where(job => !recent.Any(other => other.Id != job.Id &&
             (
                 (job.ApplyLink != "" && job.ApplyLink == other.ApplyLink) ||
@@ -220,7 +231,8 @@ public class HomeController : Controller
         }
         ViewData["Canonical"] = Origin + Url.RouteUrl("job-details", new { slug = job.Slug });
         ViewData["NoIndex"] = !discoverable;
-        ViewData["ShowAds"] = discoverable;
+        // Advertising remains disabled as requested, including historical pages.
+        ViewData["ShowAds"] = false;
         ViewData["IsDiscoverable"] = discoverable;
         ViewData["ShowJobPosting"] = discoverable && job.SourcePostedDate.HasValue;
         ViewBag.IsExpired = expired;
@@ -228,7 +240,7 @@ public class HomeController : Controller
         ViewBag.IsSaved = ReadSavedIds().Contains(job.Id);
         ViewData["Title"] = $"{job.Title} at {job.CompanyName} | D2DJobs";
         var qualificationSummary = JobQuality.HasQualificationPlaceholder(job.Qualification)
-            ? "qualification details are being reviewed"
+            ? "qualification details are not available in the source"
             : job.Qualification;
         var jobDescription = $"{job.Title} at {job.CompanyName} in {job.Location}. Check {qualificationSummary} eligibility, skills and application details.";
         ViewData["MetaDescription"] = jobDescription.Length <= 160 ? jobDescription : jobDescription[..157].TrimEnd() + "...";

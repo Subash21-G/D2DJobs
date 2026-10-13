@@ -66,11 +66,11 @@ const nodePath = require('node:path');
         File: { name: 'quality-import-fixture.xlsx', mimeType: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet', buffer: fs.readFileSync(importWorkbook) }
       }
     });
-    check(importedResponse.status() === 200, 'Excel import returns its review summary');
+    check(importedResponse.status() === 200, 'Excel import returns its automatic publication summary');
     const importHtml = await importedResponse.text();
-    check(importHtml.includes('Accepted 2; rejected 0; saved 2 inactive draft(s).'), 'Import summary separates accepted, rejected and draft rows');
-    check(importHtml.includes('LastVerifiedUtc was ignored') && importHtml.includes('IsActive was ignored') && importHtml.includes('source checked by a person'), 'Import ignores workbook activation and verification fields');
-    check(importHtml.includes('Review required before publishing') && importHtml.includes('Review imported drafts'), 'Import summary links to draft review and explains the human publication steps');
+    check(importHtml.includes('Accepted 2; rejected 0; imported 2 active listing(s).'), 'Import summary confirms rows were automatically activated');
+    check(importHtml.includes('By uploading, you confirm that you checked each vacancy against its source.'), 'Import records the uploader confirmation and uses server time for verification');
+    check(!importHtml.includes('Review required before publishing') && !importHtml.includes('Review imported drafts'), 'Import no longer requires a separate review workflow');
     await create({ ...job('UnsupportedCategory'), Category: 'Company Wise Jobs' });
     await create({ ...job('MissingSourceType'), SourceType: '' });
     await create({ ...job('Generic'), ApplicationInstructions: 'Eligible candidates can apply online through the official website. For this particular test vacancy, select its role, upload the required resume and retain the portal confirmation number.' });
@@ -89,17 +89,17 @@ const nodePath = require('node:path');
       await page.goto(base + '/Admin?search=' + encodeURIComponent('QUALITY ' + title));
       const edit = await page.locator('a[href^="/Admin/Edit/"]').first().getAttribute('href');
       await page.goto(base + edit);
-      check(!await page.locator('[name="IsActive"][type="checkbox"]').isChecked(), title + ' held as draft');
+      check(await page.locator('[name="IsActive"][type="checkbox"]').isChecked(), title + ' retains the administrator selected Active status');
     }
     await page.goto(base + '/Admin?search=QUALITY%20Imported%20Unsupported');
     const importedUnsupportedEdit = await page.locator('a[href^="/Admin/Edit/"]').first().getAttribute('href');
     await page.goto(base + importedUnsupportedEdit);
-    check(!await page.locator('[name="IsActive"][type="checkbox"]').isChecked(), 'Imported jobs remain inactive drafts');
+    check(await page.locator('[name="IsActive"][type="checkbox"]').isChecked(), 'Imported jobs are automatically active');
     await page.goto(base + '/Admin?search=' + encodeURIComponent('QUALITY Imported Date Test'));
     const importedSupportedEdit = await page.locator('a[href^="/Admin/Edit/"]').first().getAttribute('href');
     await page.goto(base + importedSupportedEdit);
-    await page.locator('[name="LastVerifiedUtc"]').fill(date(-1).slice(0, 10));
-    await page.locator('[name="IsActive"][type="checkbox"]').check();
+    check(await page.locator('[name="SourceType"]').inputValue() === 'OfficialEmployer', 'Missing Excel source type is detected from a company-matching source domain');
+    check(await page.locator('[name="LastVerifiedUtc"]').inputValue() !== '', 'Imported jobs receive a server verification timestamp');
     await page.getByRole('button', { name: 'Save changes' }).click();
     await page.waitForURL('**/Admin');
     const rows = JSON.parse(execFileSync('powershell.exe', ['-NoProfile', '-File', 'tests/Set-QualityFixtures.ps1'], { encoding: 'utf8' }));
