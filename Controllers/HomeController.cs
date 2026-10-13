@@ -32,7 +32,8 @@ public class HomeController : Controller
         return checkedJobs.Where(job => !recent.Any(other => other.Id != job.Id &&
             (
                 (job.ApplyLink != "" && job.ApplyLink == other.ApplyLink) ||
-                (job.CompanyName.Trim().ToLower() == other.CompanyName.Trim().ToLower() &&
+                (job.CompanyName.Trim().ToLower().Replace(" private limited", "").Replace(" pvt. ltd.", "").Replace(" pvt ltd", "").Replace(" limited", "").Replace(" ltd.", "").Replace(" ltd", "").Trim() ==
+                 other.CompanyName.Trim().ToLower().Replace(" private limited", "").Replace(" pvt. ltd.", "").Replace(" pvt ltd", "").Replace(" limited", "").Replace(" ltd.", "").Replace(" ltd", "").Trim() &&
                  job.Role.Trim() != "" && job.Role.Trim().ToLower() == other.Role.Trim().ToLower() &&
                  job.Location.Trim() != "" && job.Location.Trim().ToLower() == other.Location.Trim().ToLower()) ||
                 (job.ApplicationInstructions != null && job.ApplicationInstructions.Trim() != "" &&
@@ -226,7 +227,10 @@ public class HomeController : Controller
         ViewBag.RelatedJobs = await DiscoverableJobs().Where(j => j.Category == job.Category && j.Id != job.Id).OrderByDescending(j => j.PostedDate).Take(4).ToListAsync();
         ViewBag.IsSaved = ReadSavedIds().Contains(job.Id);
         ViewData["Title"] = $"{job.Title} at {job.CompanyName} | D2DJobs";
-        var jobDescription = $"{job.Title} at {job.CompanyName} in {job.Location}. Check {job.Qualification} eligibility, skills and application details.";
+        var qualificationSummary = JobQuality.HasQualificationPlaceholder(job.Qualification)
+            ? "qualification details are being reviewed"
+            : job.Qualification;
+        var jobDescription = $"{job.Title} at {job.CompanyName} in {job.Location}. Check {qualificationSummary} eligibility, skills and application details.";
         ViewData["MetaDescription"] = jobDescription.Length <= 160 ? jobDescription : jobDescription[..157].TrimEnd() + "...";
         if (expired) Response.StatusCode = StatusCodes.Status410Gone;
         return View(job);

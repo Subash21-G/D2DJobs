@@ -84,7 +84,8 @@ public class AdminController(ApplicationDbContext db, IWebHostEnvironment enviro
                 (
                     (j.ApplyLink != "" && j.ApplyLink == other.ApplyLink) ||
                     (
-                        j.CompanyName.Trim().ToLower() == other.CompanyName.Trim().ToLower() &&
+                        j.CompanyName.Trim().ToLower().Replace(" private limited", "").Replace(" pvt. ltd.", "").Replace(" pvt ltd", "").Replace(" limited", "").Replace(" ltd.", "").Replace(" ltd", "").Trim() ==
+                        other.CompanyName.Trim().ToLower().Replace(" private limited", "").Replace(" pvt. ltd.", "").Replace(" pvt ltd", "").Replace(" limited", "").Replace(" ltd.", "").Replace(" ltd", "").Trim() &&
                         j.Role.Trim() != "" &&
                         j.Role.Trim().ToLower() == other.Role.Trim().ToLower() &&
                         j.Location.Trim() != "" &&
@@ -93,7 +94,8 @@ public class AdminController(ApplicationDbContext db, IWebHostEnvironment enviro
                 )))
             .Select(j => j.Id);
         var reviewableJobs = db.Jobs.AsNoTracking().Where(j => j.ExpiryDate == null || j.ExpiryDate >= today);
-        ViewBag.ReviewJobs = await reviewableJobs.Where(JobQuality.NeedsReview(verificationCutoffForDuplicates)).CountAsync();
+        var qualityReviewIds = reviewableJobs.Where(JobQuality.NeedsReview(verificationCutoffForDuplicates)).Select(j => j.Id);
+        ViewBag.ReviewJobs = await qualityReviewIds.Union(suspectedDuplicateIds).Union(duplicateGuidanceIds).CountAsync();
         ViewBag.DuplicateCandidates = await suspectedDuplicateIds.Union(duplicateGuidanceIds).CountAsync();
         ViewBag.MissingVerifiedSources = await reviewableJobs.Where(j => !j.LastVerifiedUtc.HasValue || j.LastVerifiedUtc < verificationCutoffForDuplicates).CountAsync();
         ViewBag.BrokenApplicationUrls = await reviewableJobs.Where(j =>
@@ -332,7 +334,8 @@ public class AdminController(ApplicationDbContext db, IWebHostEnvironment enviro
                 .AnyAsync(other =>
                     (job.ApplyLink != "" && other.ApplyLink == job.ApplyLink) ||
                     (company != "" && role != "" && location != "" &&
-                     other.CompanyName.Trim().ToLower() == company && other.Role.Trim().ToLower() == role &&
+                     other.CompanyName.Trim().ToLower().Replace(" private limited", "").Replace(" pvt. ltd.", "").Replace(" pvt ltd", "").Replace(" limited", "").Replace(" ltd.", "").Replace(" ltd", "").Trim() ==
+                     company.Replace(" private limited", "").Replace(" pvt. ltd.", "").Replace(" pvt ltd", "").Replace(" limited", "").Replace(" ltd.", "").Replace(" ltd", "").Trim() && other.Role.Trim().ToLower() == role &&
                      other.Location.Trim().ToLower() == location) ||
                     (job.ApplicationInstructions != null && job.ApplicationInstructions.Trim() != "" &&
                      other.ApplicationInstructions != null && other.ApplicationInstructions.Trim() == application) ||

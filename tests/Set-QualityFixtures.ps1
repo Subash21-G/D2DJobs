@@ -7,7 +7,9 @@ try {
     $connection.Open()
     $command = $connection.CreateCommand()
     $command.CommandText = @'
-UPDATE Jobs SET IsActive = 1 WHERE Title IN ('QUALITY Duplicate', 'QUALITY Thin', 'QUALITY Stale', 'QUALITY GenericApplyUrl', 'QUALITY Expired');
+UPDATE Jobs SET IsActive = 1 WHERE Title IN ('QUALITY Duplicate', 'QUALITY Thin', 'QUALITY Stale', 'QUALITY GenericApplyUrl', 'QUALITY Expired', 'QUALITY QualificationPlaceholder', 'QUALITY InternalFields', 'QUALITY BoilerplateDescription', 'QUALITY TemplateEditorial', 'QUALITY InvalidApplyUrl', 'QUALITY InvalidAuthorityUrl', 'QUALITY Xelentor A', 'QUALITY Xelentor B');
+UPDATE Jobs SET ApplyLink = 'https://user@example.invalid/apply' WHERE Title = 'QUALITY InvalidApplyUrl';
+UPDATE Jobs SET ApplyLink = 'https:///apply' WHERE Title = 'QUALITY InvalidAuthorityUrl';
 UPDATE Jobs SET AvailableFrom = DATEADD(day, 5, GETDATE()) WHERE Title = 'QUALITY Scheduled';
 SELECT Id, Title, Slug, IsActive FROM Jobs WHERE Title LIKE 'QUALITY %';
 '@
