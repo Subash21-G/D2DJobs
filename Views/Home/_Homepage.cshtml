@@ -1,5 +1,4 @@
 @model List<JobForFresher.Models.Job>
-@inject Microsoft.Extensions.Options.IOptions<SiteOptions> SiteSettings
 @{
     var counts = ViewBag.CategoryCounts as Dictionary<string, int> ?? new();
     var companies = ViewBag.HiringCompanies as Dictionary<string, int> ?? new();
@@ -75,8 +74,4 @@
 }
 <section class="home-section home-container home-alerts" aria-labelledby="alerts-heading">
     <div class="home-alert-panel"><div><span class="home-kicker"><i class="fa-regular fa-bell" aria-hidden="true"></i> Job alerts</span><h2 id="alerts-heading">Never miss your next opportunity</h2><p>Follow new openings in your RSS reader or choose a job alert channel.</p></div><a class="primary-button" asp-action="Alerts">Get job alerts <i class="fa-solid fa-arrow-right" aria-hidden="true"></i></a></div>
-    @if (!string.IsNullOrWhiteSpace(SiteSettings.Value.WhatsAppUrl))
-    {
-        <div class="home-alert-panel home-whatsapp"><div><span class="home-kicker"><i class="fa-brands fa-whatsapp" aria-hidden="true"></i> WhatsApp channel</span><h2>Great opportunities.<br />Straight to your WhatsApp.</h2><p>Join our community for fresher jobs, internships and off-campus drives.</p></div><a class="home-whatsapp-button" href="@SiteSettings.Value.WhatsAppUrl" target="_blank" rel="noopener noreferrer">Join WhatsApp channel <i class="fa-solid fa-arrow-up-right-from-square" aria-hidden="true"></i></a></div>
-    }
 </section>

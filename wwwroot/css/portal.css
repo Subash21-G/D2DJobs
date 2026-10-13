@@ -211,6 +211,4 @@
 .whatsapp-popup-copy>a{display:inline-flex;align-items:center;gap:8px;min-height:42px;color:#078b46;font-size:.83rem;font-weight:700}
 .whatsapp-close{position:absolute;top:8px;right:8px;display:grid;place-items:center;width:36px;height:36px;border:0;border-radius:50%;background:transparent;color:var(--muted,#576c84);cursor:pointer}
 .whatsapp-close:hover{background:#edf3f8;color:var(--ink,#08192b)}
-.whatsapp-launcher{position:fixed;right:24px;bottom:24px;z-index:20;display:inline-flex;align-items:center;justify-content:center;gap:12px;min-height:52px;padding:14px 22px;border:0;border-radius:40px;background:#18c65d;color:#fff;box-shadow:0 8px 20px #19374930;cursor:pointer}
-.whatsapp-launcher i{font-size:1.3rem}
-@media(max-width:600px){.whatsapp-widget{right:16px;bottom:16px;gap:10px}.whatsapp-popup{padding:18px 16px;gap:10px}.whatsapp-launcher{width:52px;height:52px;min-height:52px;padding:0}.whatsapp-launcher span{display:none}}
+@media(max-width:600px){.whatsapp-widget{right:16px;bottom:16px;gap:10px}.whatsapp-popup{padding:18px 16px;gap:10px}}

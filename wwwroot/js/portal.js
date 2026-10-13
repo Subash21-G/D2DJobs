@@ -40,29 +40,21 @@
     });
 
     const whatsappPopup = document.querySelector('[data-whatsapp-popup]');
-    const whatsappToggle = document.querySelector('[data-whatsapp-toggle]');
     const whatsappClose = document.querySelector('[data-whatsapp-close]');
-    if (whatsappPopup && whatsappToggle && whatsappClose) {
+    if (whatsappPopup && whatsappClose) {
         const dismissalKey = 'd2djobs-whatsapp-invitation-dismissed';
         const wasDismissed = () => { try { return sessionStorage.getItem(dismissalKey) === 'true'; } catch { return false; } };
-        const setPopupOpen = (open) => {
-            whatsappPopup.hidden = !open;
-            whatsappToggle.setAttribute('aria-expanded', String(open));
-        };
-        whatsappToggle.addEventListener('click', () => setPopupOpen(whatsappPopup.hidden));
         whatsappClose.addEventListener('click', () => {
-            setPopupOpen(false);
+            whatsappPopup.hidden = true;
             try { sessionStorage.setItem(dismissalKey, 'true'); } catch {}
-            whatsappToggle.focus();
         });
         document.addEventListener('keydown', event => {
             if (event.key === 'Escape' && !whatsappPopup.hidden) {
-                setPopupOpen(false);
-                whatsappToggle.focus();
+                whatsappPopup.hidden = true;
             }
         });
         if (!wasDismissed()) window.setTimeout(() => {
-            if (document.visibilityState === 'visible') setPopupOpen(true);
+            if (document.visibilityState === 'visible') whatsappPopup.hidden = false;
         }, 2500);
     }
 })();
