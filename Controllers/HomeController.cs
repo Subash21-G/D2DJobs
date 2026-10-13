@@ -31,10 +31,7 @@ public class HomeController : Controller
         // Active is the editor's explicit publication control. Keep objective
         // availability, duplicate, and vacancy-specific application URL checks.
         var checkedJobs = recent.Where(JobQuality.HasUsableApplicationUrl())
-            .Where(j =>
-            j.OfficialSourceUrl != null &&
-            (j.OfficialSourceUrl.StartsWith("https://") || j.OfficialSourceUrl.StartsWith("http://")) &&
-            !j.OfficialSourceUrl.Contains(" ") && !j.OfficialSourceUrl.Contains("@"));
+            .Where(JobQuality.HasUsableOfficialSourceUrl());
         return checkedJobs.Where(job => !recent.Any(other => other.Id != job.Id &&
             (
                 (job.ApplyLink != "" && job.ApplyLink == other.ApplyLink) ||
