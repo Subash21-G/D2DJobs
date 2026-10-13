@@ -152,3 +152,47 @@
 .related-grid .job-facts{display:grid;gap:12px}
 
 .job-card-top{flex-wrap:wrap}
+/* Public layouts: prevent narrow-screen overflow in menus, filters and cards. */
+.public-page,.public-page *{min-width:0}
+.public-page img,.public-page video{max-width:100%}
+.portal-nav a,.portal-footer a,.home-category,.home-company-card,.compact-job{overflow-wrap:anywhere}
+@media(max-width:900px){
+ .portal-header{display:block}
+ .masthead{display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap}
+ .portal-nav{width:100%}
+ .portal-nav>.portal-container{width:100%;display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:4px 12px;padding-block:8px}
+ .portal-nav a{min-height:44px;display:flex;align-items:center}
+ .portal-nav:not(.open){display:none}
+}
+@media(max-width:600px){
+ .utility-bar>.portal-container{align-items:center;justify-content:space-between;gap:4px 10px}
+ .utility-bar a{display:inline-flex;align-items:center;min-height:36px;margin-left:8px}
+ .masthead{padding-block:12px}
+ .header-actions{display:flex;align-items:center;gap:6px}
+ .menu-toggle,.theme-toggle{min-height:44px;display:inline-flex;align-items:center;justify-content:center}
+ .portal-nav>.portal-container{grid-template-columns:repeat(2,minmax(0,1fr));gap:0 10px}
+ .page-content{padding-top:18px}
+ .search-panel{grid-template-columns:minmax(0,1fr);gap:12px}
+ .search-panel .search-field:first-child,.search-panel .primary-button{grid-column:auto}
+ .search-panel .primary-button{width:100%;min-height:48px}
+ .jobs-layout,.jobs-sidebar{grid-template-columns:minmax(0,1fr)}
+ .section-heading{align-items:flex-start;flex-wrap:wrap}
+ .sort-control{width:100%;justify-content:space-between}
+ .sort-control>label{display:block}
+ .sort-control select{max-width:70%;min-height:44px}
+ .category-strip{grid-template-columns:repeat(2,minmax(0,1fr))}
+ .job-list{grid-template-columns:minmax(0,1fr)}
+ .opportunity-card,.detail-panel,.sidebar-panel{padding:16px}
+ .job-card-bottom{align-items:flex-start;flex-wrap:wrap}
+ .job-card-bottom .details-link{min-height:44px;display:inline-flex;align-items:center}
+ .pagination-bar{flex-wrap:wrap;gap:10px}
+ .pagination-bar>div{display:flex;flex-wrap:wrap;gap:6px}
+ .footer-grid{grid-template-columns:minmax(0,1fr);gap:22px}
+ .portal-footer{padding-bottom:24px}
+}
+@media(max-width:360px){
+ .portal-container{width:calc(100% - 24px)}
+ .portal-nav>.portal-container{grid-template-columns:minmax(0,1fr)}
+ .utility-bar>.portal-container{font-size:11px}
+ .category-strip{grid-template-columns:minmax(0,1fr)}
+}

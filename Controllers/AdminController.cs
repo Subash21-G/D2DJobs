@@ -59,15 +59,19 @@ public class AdminController(ApplicationDbContext db, IWebHostEnvironment enviro
         admin.FailedLoginCount = 0; admin.LockoutUntilUtc = null; await db.SaveChangesAsync(); await SignIn(admin);
         TempData["Notice"] = "Password changed. Other signed-in sessions have been revoked."; return RedirectToAction(nameof(Security));
     }
-    public async Task<IActionResult> Index(string? search, string? category, string? status, int page = 1, int recentDays = 0, DateTime? addedFrom = null, DateTime? addedTo = null, string dateOrder = "newest")
+    public async Task<IActionResult> Index(string? search, string? category, string? status, int page = 1, int recentDays = 0, DateTime? addedFrom = null, DateTime? addedTo = null, string dateOrder = "newest", string? metric = null)
     {
         var today = DateTime.Today;
-        var totals = await db.Jobs.GroupBy(j => 1).Select(g => new { Total = g.Count(), Featured = g.Count(j => j.IsFeatured), Active = g.Count(j => j.IsActive && (j.AvailableFrom == null || j.AvailableFrom <= today) && (j.ExpiryDate == null || j.ExpiryDate >= today) && (j.SourcePostedDate ?? j.PostedDate).Date > today.AddDays(-30)), Drafts = g.Count(j => !j.IsActive && (j.ExpiryDate == null || j.ExpiryDate >= today) && (j.SourcePostedDate ?? j.PostedDate).Date > today.AddDays(-30)), Expired = g.Count(j => (j.ExpiryDate < today || (j.SourcePostedDate ?? j.PostedDate).Date <= today.AddDays(-30))) }).FirstOrDefaultAsync();
-        ViewBag.TotalJobs = totals?.Total ?? 0; ViewBag.FeaturedJobs = totals?.Featured ?? 0; ViewBag.ActiveJobs = totals?.Active ?? 0; ViewBag.DraftJobs = totals?.Drafts ?? 0; ViewBag.ExpiredJobs = totals?.Expired ?? 0;
+        var totals = await db.Jobs.GroupBy(j => 1).Select(g => new { Total = g.Count(), Featured = g.Count(j => j.IsFeatured), Active = g.Count(j => j.IsActive && (j.AvailableFrom == null || j.AvailableFrom <= today) && (j.ExpiryDate == null || j.ExpiryDate >= today) && (j.WalkInEndDate.HasValue ? j.WalkInEndDate.Value.Date >= today : !j.WalkInDate.HasValue || j.WalkInDate.Value.Date >= today) && (j.SourcePostedDate ?? j.PostedDate).Date > today.AddDays(-30)), Drafts = g.Count(j => !j.IsActive && (j.ExpiryDate == null || j.ExpiryDate >= today) && (j.SourcePostedDate ?? j.PostedDate).Date > today.AddDays(-30)) }).FirstOrDefaultAsync();
+        var expiredCount = await db.Jobs.CountAsync(j => j.IsActive &&
+            ((j.ExpiryDate.HasValue && j.ExpiryDate.Value.Date < today) ||
+             (j.WalkInEndDate.HasValue ? j.WalkInEndDate.Value.Date < today : j.WalkInDate.HasValue && j.WalkInDate.Value.Date < today) ||
+             (j.SourcePostedDate ?? j.PostedDate).Date <= today.AddDays(-30)));
+        ViewBag.TotalJobs = totals?.Total ?? 0; ViewBag.FeaturedJobs = totals?.Featured ?? 0; ViewBag.ActiveJobs = totals?.Active ?? 0; ViewBag.DraftJobs = totals?.Drafts ?? 0; ViewBag.ExpiredJobs = expiredCount;
         var jobs = db.Jobs.AsNoTracking(); search = search?.Trim();
         if (!string.IsNullOrEmpty(search)) jobs = jobs.Where(j => j.Title.Contains(search) || j.CompanyName.Contains(search) || j.Location.Contains(search) || j.Skills.Contains(search));
         if (!string.IsNullOrEmpty(category)) jobs = jobs.Where(j => j.Category == category);
-        jobs = status switch { "Active" => jobs.Where(j => j.IsActive && (j.ExpiryDate == null || j.ExpiryDate >= today) && (j.SourcePostedDate ?? j.PostedDate).Date > today.AddDays(-30)), "Inactive" => jobs.Where(j => !j.IsActive), "Expired" => jobs.Where(j => (j.ExpiryDate < today || (j.SourcePostedDate ?? j.PostedDate).Date <= today.AddDays(-30))), _ => jobs };
+        jobs = status switch { "Active" => jobs.Where(j => j.IsActive && (j.AvailableFrom == null || j.AvailableFrom <= today) && (j.ExpiryDate == null || j.ExpiryDate >= today) && (j.WalkInEndDate.HasValue ? j.WalkInEndDate.Value.Date >= today : !j.WalkInDate.HasValue || j.WalkInDate.Value.Date >= today) && (j.SourcePostedDate ?? j.PostedDate).Date > today.AddDays(-30)), "Inactive" => jobs.Where(j => !j.IsActive), "Expired" => jobs.Where(j => j.IsActive && ((j.ExpiryDate.HasValue && j.ExpiryDate.Value.Date < today) || (j.WalkInEndDate.HasValue ? j.WalkInEndDate.Value.Date < today : j.WalkInDate.HasValue && j.WalkInDate.Value.Date < today) || (j.SourcePostedDate ?? j.PostedDate).Date <= today.AddDays(-30))), _ => jobs };
         var verificationCutoffForDuplicates = JobQuality.VerificationCutoff();
         var recentJobsForDuplicates = db.Jobs.AsNoTracking()
             .Where(j => j.IsActive && (j.AvailableFrom == null || j.AvailableFrom <= today) && (j.ExpiryDate == null || j.ExpiryDate >= today) && (j.SourcePostedDate ?? j.PostedDate).Date > today.AddDays(-30));
@@ -121,6 +125,30 @@ public class AdminController(ApplicationDbContext db, IWebHostEnvironment enviro
                 .Select(j => j.Id);
             jobs = jobs.Where(j => needsReviewIds.Contains(j.Id) || duplicateIds.Contains(j.Id) || suspectedDuplicateIds.Contains(j.Id));
         }
+        metric = metric is "inactive" or "review" or "duplicate" or "source" or "application" or "indexable" or "excluded" or "all" or "active" or "expired" or "featured" ? metric : null;
+        var indexEligibleIds = verifiedActive.Where(j => !suspectedDuplicateIds.Contains(j.Id) && !duplicateGuidanceIds.Contains(j.Id)).Select(j => j.Id);
+        jobs = metric switch
+        {
+            "inactive" => jobs.Where(j => !j.IsActive && (j.ExpiryDate == null || j.ExpiryDate >= today) && (j.SourcePostedDate ?? j.PostedDate).Date > today.AddDays(-30)),
+            "review" => jobs.Where(j => qualityReviewIds.Contains(j.Id) || suspectedDuplicateIds.Contains(j.Id) || duplicateGuidanceIds.Contains(j.Id)),
+            "duplicate" => jobs.Where(j => suspectedDuplicateIds.Contains(j.Id) || duplicateGuidanceIds.Contains(j.Id)),
+            "source" => jobs.Where(j => !j.LastVerifiedUtc.HasValue || j.LastVerifiedUtc < verificationCutoffForDuplicates),
+            "application" => jobs.Where(j =>
+                (!j.ApplyLink.StartsWith("https://") && !j.ApplyLink.StartsWith("http://")) || j.ApplyLink.Contains(" ") || j.ApplyLink.Contains("@") ||
+                j.ApplyLink.ToLower().EndsWith("/careers") || j.ApplyLink.ToLower().EndsWith("/career") || j.ApplyLink.ToLower().EndsWith("/jobs") ||
+                j.ApplyLink.ToLower().EndsWith("/job") || j.ApplyLink.ToLower().EndsWith("/recruitment") || j.ApplyLink.ToLower().EndsWith("/vacancies") ||
+                j.ApplyLink.IndexOf("/", j.ApplyLink.IndexOf("://") + 3) < 0 ||
+                j.ApplyLink.IndexOf("/", j.ApplyLink.IndexOf("://") + 3) >= j.ApplyLink.Length - 1),
+            "indexable" => jobs.Where(j => indexEligibleIds.Contains(j.Id)),
+            "excluded" => jobs.Where(j => j.IsActive && (j.AvailableFrom == null || j.AvailableFrom <= today) && (j.ExpiryDate == null || j.ExpiryDate >= today) &&
+                (j.SourcePostedDate ?? j.PostedDate).Date > today.AddDays(-30) && !indexEligibleIds.Contains(j.Id)),
+            "active" => jobs.Where(j => j.IsActive && (j.AvailableFrom == null || j.AvailableFrom <= today) && (j.ExpiryDate == null || j.ExpiryDate >= today) &&
+                (j.SourcePostedDate ?? j.PostedDate).Date > today.AddDays(-30)),
+            "expired" => jobs.Where(j => j.IsActive && ((j.ExpiryDate.HasValue && j.ExpiryDate.Value.Date < today) || (j.WalkInEndDate.HasValue ? j.WalkInEndDate.Value.Date < today : j.WalkInDate.HasValue && j.WalkInDate.Value.Date < today) || (j.SourcePostedDate ?? j.PostedDate).Date <= today.AddDays(-30))),
+            "featured" => jobs.Where(j => j.IsFeatured),
+            "all" => jobs,
+            _ => jobs
+        };
         recentDays = recentDays is 7 or 30 or 90 ? recentDays : 0;
         dateOrder = dateOrder == "oldest" ? "oldest" : "newest";
         addedFrom = addedFrom?.Date;
@@ -131,7 +159,7 @@ public class AdminController(ApplicationDbContext db, IWebHostEnvironment enviro
         if (addedTo.HasValue) jobs = jobs.Where(j => j.PostedDate < addedTo.Value.AddDays(1));
         if (invalidDateRange) jobs = jobs.Where(j => false);
         var count = await jobs.CountAsync(); var pages = Math.Max(1, (int)Math.Ceiling(count / 20d)); page = Math.Clamp(page, 1, pages);
-        ViewBag.Search = search; ViewBag.Category = category; ViewBag.Status = status; ViewBag.RecentDays = recentDays;
+        ViewBag.Search = search; ViewBag.Category = category; ViewBag.Status = status; ViewBag.RecentDays = recentDays; ViewBag.Metric = metric;
         ViewBag.AddedFrom = addedFrom?.ToString("yyyy-MM-dd"); ViewBag.AddedTo = addedTo?.ToString("yyyy-MM-dd");
         ViewBag.DateOrder = dateOrder; ViewBag.InvalidDateRange = invalidDateRange; ViewBag.ResultCount = count; ViewBag.Page = page; ViewBag.Pages = pages;
         ViewBag.TopViewedJobs = await db.Jobs.AsNoTracking().OrderByDescending(j => j.ViewsCount).ThenByDescending(j => j.Id).Take(5).ToListAsync();
