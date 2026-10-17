@@ -1,0 +1,58 @@
+﻿@{
+    ViewData["Title"] = "10 Modern ATS Resume Templates | D2DJobs";
+    ViewData["MetaDescription"] = "Explore role-focused resume templates for freshers and professionals. Open an editable sample or download Word and PDF versions.";
+    var templates = new[]
+    {
+        ("01", "Modern Fresher Graduate", "First job · all degrees", "01_Modern_Fresher_Graduate", "graduate"),
+        ("02", "Modern Software Developer", "Frontend · backend · full stack", "02_Modern_Software_Developer", "developer"),
+        ("03", "Modern Data Analyst", "SQL · Excel · Power BI", "03_Modern_Data_Analyst", "analyst"),
+        ("04", "Mechanical Design Engineer", "CAD · GD&T · manufacturing", "04_Modern_Mechanical_Design", "mechanical"),
+        ("05", "Modern Engineering Fresher", "Production · quality · core engineering", "05_Modern_Engineering_Fresher", "engineering"),
+        ("06", "Modern Customer Support", "BPO · customer service · help desk", "06_Modern_Customer_Support", "support"),
+        ("07", "Modern Sales & Marketing", "Business development · digital marketing", "07_Modern_Sales_Marketing", "sales"),
+        ("08", "Modern Finance & Accounts", "Accounting · reconciliation · finance", "08_Modern_Finance_Accounts", "finance"),
+        ("09", "Modern HR & Recruitment", "Talent acquisition · HR operations", "09_Modern_HR_Recruitment", "hr"),
+        ("10", "Modern Operations & Logistics", "Supply chain · purchasing · inventory", "10_Modern_Operations_Logistics", "operations")
+    };
+}
+<div class="template-gallery-heading">
+    <div><span class="eyebrow">D2DJOBS RESUME STUDIO</span><h1>10 modern ATS resume templates</h1><p>Choose a role, then use the template in the live builder or inspect its example. Every layout uses a clean, single-column structure.</p></div>
+    <a class="secondary-button" asp-action="Index">← Back to resume builder</a>
+</div>
+<label class="template-search-label" for="template-search">Find your role</label>
+<div class="template-search-wrap"><span class="template-search-icon" aria-hidden="true"></span><input id="template-search" type="search" placeholder="Search software, finance, support..." autocomplete="off" /><span id="template-result-count" aria-live="polite">10 templates</span></div>
+<p id="template-empty" class="template-gallery-note" hidden>No matching templates yet. Try a broader role or skill.</p>
+<div class="template-gallery-grid">
+@foreach (var item in templates)
+{
+    var html = $"/resume-templates/HTML/{item.Item4}.html";
+    var docx = $"/resume-templates/DOCX/{item.Item4}.docx";
+    var pdf = $"/resume-templates/PDF/{item.Item4}.pdf";
+    <article class="role-template-card" data-template-card data-search="@($"{item.Item2} {item.Item3}".ToLowerInvariant())">
+        <div class="role-template-art" aria-hidden="true"><span>@item.Item1</span><i></i><i></i><i></i><i></i><i></i></div>
+        <div class="role-template-body"><span class="role-template-kicker">TEMPLATE @item.Item1</span><h2>@item.Item2</h2><p>@item.Item3</p>
+            <div class="role-template-actions"><a class="primary-button" href="@Url.Action("Index", "Resume", new { template = item.Item5 })">Use in builder</a><a href="@html" target="_blank" rel="noopener">View sample</a></div>
+            <div class="role-template-downloads"><a href="@docx" download>Download Word</a><a href="@pdf" target="_blank" rel="noopener">View PDF</a></div>
+        </div>
+    </article>
+}
+</div>
+<p class="template-gallery-note">Use in builder opens the live editor with your role selected. Samples are editable in a separate tab; use Word to save sample edits. Replace example claims with your real experience.</p>
+
+@section Scripts {
+<script>
+(() => {
+ const input = document.querySelector('#template-search');
+ const cards = [...document.querySelectorAll('[data-template-card]')];
+ const count = document.querySelector('#template-result-count');
+ const empty = document.querySelector('#template-empty');
+ input.addEventListener('input', () => {
+  const query = input.value.trim().toLocaleLowerCase();
+  let visible = 0;
+  cards.forEach(card => { const match = card.dataset.search.includes(query); card.hidden = !match; if (match) visible++; });
+  count.textContent = `${visible} ${visible === 1 ? 'template' : 'templates'}`;
+  empty.hidden = visible !== 0;
+ });
+})();
+</script>
+}

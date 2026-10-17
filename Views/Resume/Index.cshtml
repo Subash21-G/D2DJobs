@@ -1,9 +1,19 @@
 @{ ViewData["Title"] = "Free resume builder for freshers | D2DJobs"; ViewData["MetaDescription"] = "Build a clean resume for free. Preview your education, experience and projects, then print or save as PDF."; }
 <div class="tools-heading no-print"><div><span class="eyebrow">YOUR NEXT CHAPTER</span><h1>A clear resume.<br />A confident first step.</h1><p>Build, preview, and save a PDF for free. No account needed.</p></div><a class="secondary-button" asp-action="Services">Explore optional resume help →</a></div>
+<p class="no-print resume-template-link"><span>Looking for a role-specific starting point?</span> <a asp-action="Templates">Browse 10 modern ATS resume templates &rarr;</a></p>
 <noscript><p class="tools-notice">Enable JavaScript to use the live resume editor and save a draft.</p></noscript>
+<section class="template-choose-panel no-print" aria-labelledby="template-choose-title">
+    <div class="template-choose-heading"><div><span class="eyebrow">STEP 1 / CHOOSE A STARTING POINT</span><h2 id="template-choose-title">Pick a template for your target role</h2><p>Every layout stays single-column and easy to read. Your details stay in the editor below.</p></div><a asp-action="Templates">Browse examples &amp; downloads &rarr;</a></div>
+    <div class="template-picker" role="group" aria-label="Choose a resume template">
+    @foreach (var item in new[] { ("graduate", "Fresher graduate", "All degrees"), ("developer", "Software developer", "Frontend / backend"), ("analyst", "Data analyst", "SQL / Excel / BI"), ("mechanical", "Mechanical design", "CAD / manufacturing"), ("engineering", "Engineering fresher", "Production / quality"), ("support", "Customer support", "Service / help desk"), ("sales", "Sales & marketing", "Business / digital"), ("finance", "Finance & accounts", "Accounting / finance"), ("hr", "HR & recruitment", "Talent / HR ops"), ("operations", "Operations & logistics", "Supply chain") }) {
+        <button type="button" class="template-option @(item.Item1 == "graduate" ? "is-active" : "")" data-template-choice="@item.Item1" aria-pressed="@(item.Item1 == "graduate" ? "true" : "false")"><span class="template-swatch @item.Item1-swatch" aria-hidden="true"></span><span><strong>@item.Item2</strong><small>@item.Item3</small></span></button>
+    }
+    </div>
+</section>
 <div class="resume-workspace">
-<section class="tool-card resume-editor no-print" aria-labelledby="editor-heading"><div class="tools-heading"><h2 id="editor-heading">Your details</h2><span class="tool-badge">100% free</span></div>
+<section class="tool-card resume-editor no-print" aria-labelledby="editor-heading"><div class="tools-heading"><h2 id="editor-heading">STEP 2 / Add your details</h2><span class="tool-badge">100% free</span></div>
 <p class="muted">Your resume is built in this browser. We do not upload its contents. Save a draft only on a device you trust.</p>
+<div id="template-guidance" class="template-guidance" role="status" aria-live="polite">Your fresher graduate template is ready. Add your own details below; the preview updates as you type.</div>
 <a href="#resume-preview">Jump to preview ↓</a>
 <form id="resume-form" class="tools-form">
 <label for="resume-name">Full name <span aria-hidden="true">*</span></label><input id="resume-name" name="name" required maxlength="100" autocomplete="name" placeholder="Your full name" />
@@ -11,22 +21,41 @@
 <div class="form-grid"><div><label for="resume-email">Email</label><input id="resume-email" name="email" type="email" maxlength="150" autocomplete="email" /></div><div><label for="resume-phone">Phone</label><input id="resume-phone" name="phone" type="tel" maxlength="40" autocomplete="tel" /></div></div>
 <label for="resume-location">City, state</label><input id="resume-location" name="location" maxlength="150" autocomplete="address-level2" />
 <label for="resume-links">LinkedIn / portfolio</label><textarea id="resume-links" name="links" rows="2" maxlength="600" placeholder="linkedin.com/in/yourname&#10;github.com/yourname"></textarea>
-<label for="resume-summary">Professional summary</label><textarea id="resume-summary" name="summary" rows="4" maxlength="1800" placeholder="Describe your strengths, relevant projects, and the role you are seeking."></textarea>
-<label for="resume-education">Education</label><textarea id="resume-education" name="education" rows="5" maxlength="4000" placeholder="B.Tech in Computer Science | College name&#10;2022–2026 | CGPA: 8.4/10"></textarea>
-<label for="resume-experience">Experience / internships</label><textarea id="resume-experience" name="experience" rows="5" maxlength="6000" placeholder="Software Intern | Company | May–July 2026&#10;• Built a dashboard used by a team of 10.&#10;• Reduced report preparation time by 30%."></textarea>
-<label for="resume-projects">Projects</label><textarea id="resume-projects" name="projects" rows="5" maxlength="6000" placeholder="Project name | Technologies used&#10;• Explain what you built and the result."></textarea>
-<label for="resume-skills">Skills</label><textarea id="resume-skills" name="skills" rows="3" maxlength="2000" placeholder="C#, SQL, JavaScript, Git, communication"></textarea>
-<label for="resume-certifications">Certifications / achievements</label><textarea id="resume-certifications" name="certifications" rows="4" maxlength="3000" placeholder="Certificate name | Issuer | Year"></textarea>
+<label for="resume-summary">Professional profile</label><textarea id="resume-summary" name="summary" rows="4" maxlength="1800" placeholder="Summarize your strengths, relevant experience and target role."></textarea>
+<label for="resume-education">Education</label><textarea id="resume-education" name="education" rows="5" maxlength="4000" placeholder="Degree / program | Institution | Graduation year&#10;Add relevant coursework, honors, or GPA only if you want to include it."></textarea>
+<label for="resume-experience" id="experience-label">Internship / Industrial Training</label><textarea id="resume-experience" name="experience" rows="5" maxlength="6000" placeholder="Role | Organization | Dates&#10;Describe your responsibilities and work. Add only results you can verify."></textarea>
+<label for="resume-projects">Selected projects</label><textarea id="resume-projects" name="projects" rows="5" maxlength="6000" placeholder="Project name | Tools used&#10;What you built, your contribution and the outcome."></textarea>
+<label for="resume-skills">Core skills</label><textarea id="resume-skills" name="skills" rows="3" maxlength="2000" placeholder="List relevant skills separated by commas."></textarea>
+<label for="resume-certifications">Certifications &amp; additional details</label><textarea id="resume-certifications" name="certifications" rows="4" maxlength="3000" placeholder="Certificate or achievement | Issuer | Year"></textarea>
+<details class="resume-customizer no-print" id="resume-customizer">
+<summary>Customize design and sections</summary>
+<div class="resume-customizer-content">
+<p class="customizer-intro">Adjust the look and structure. Your changes appear in the preview and PDF.</p>
+<div class="custom-style-grid">
+<div><label for="resume-accent">Accent color</label><div class="color-control"><input id="resume-accent" type="color" value="#2453a6" aria-label="Choose resume accent color"><span>Choose a color for headings and details</span></div><div class="accent-presets" aria-label="Suggested colors"><button type="button" data-accent-preset="#2453A6" style="--preset:#2453A6" aria-label="Blue accent"></button><button type="button" data-accent-preset="#156F74" style="--preset:#156F74" aria-label="Teal accent"></button><button type="button" data-accent-preset="#25764C" style="--preset:#25764C" aria-label="Green accent"></button><button type="button" data-accent-preset="#805A8C" style="--preset:#805A8C" aria-label="Purple accent"></button><button type="button" data-accent-preset="#A35E30" style="--preset:#A35E30" aria-label="Terracotta accent"></button></div></div>
+<div><label for="resume-font">Font</label><select id="resume-font"><option value="Arial, sans-serif">Arial - clean</option><option value="Calibri, Arial, sans-serif">Calibri - modern</option><option value="Georgia, serif">Georgia - classic</option><option value="Verdana, sans-serif">Verdana - clear</option></select></div>
+<div><label for="resume-density">Spacing</label><select id="resume-density"><option value="comfortable">Comfortable</option><option value="compact">Compact - fit more</option></select></div>
+<div><label for="resume-header-align">Name and contact alignment</label><select id="resume-header-align"><option value="left">Left aligned</option><option value="center">Centered</option></select></div>
+</div>
+<div class="section-manager-heading"><div><h3>Resume sections</h3><p>Rename, hide, or reorder sections. Add your own when needed.</p></div><button class="secondary-button" type="button" id="show-add-section">+ Add section</button></div>
+<div id="section-controls" class="section-controls" aria-label="Manage resume sections"></div>
+<div id="custom-section-form" class="custom-section-form" hidden><label for="new-section-title">New section title</label><input id="new-section-title" maxlength="60" placeholder="For example: Volunteering"/><label for="new-section-content">Details</label><textarea id="new-section-content" rows="3" maxlength="4000" placeholder="Add dates, organization, and your contribution."></textarea><div class="tool-actions"><button class="primary-button" type="button" id="create-section">Add section</button><button class="secondary-button" type="button" id="cancel-section">Cancel</button></div></div>
+<div id="custom-section-editors" class="custom-section-editors"></div>
+</div>
+</details>
 <div class="tool-actions"><button class="primary-button" type="submit">Print / save PDF</button><button class="secondary-button" type="button" id="save-resume">Save draft on this device</button><button class="secondary-button" type="button" id="load-resume">Load saved draft</button><button class="secondary-button" type="button" id="clear-resume">Clear resume &amp; saved draft</button></div>
 <p id="resume-status" role="status" aria-live="polite"></p><p class="muted">For a PDF, choose “Save as PDF” in the print dialog. Use A4 paper and turn off browser headers and footers.</p>
 </form></section>
-<section class="resume-preview-wrap" aria-label="Resume preview"><div class="preview-label no-print"><span>LIVE PREVIEW</span><span>Simple, readable layout</span></div>
-<article id="resume-preview" class="resume-paper">
+<section class="resume-preview-wrap" aria-label="Resume preview"><div class="preview-label no-print"><span>LIVE PREVIEW</span><span id="template-caption">Modern · clean and confident</span></div>
+
+<article id="resume-preview" class="resume-paper template-modern">
 <header><h1 data-preview="name">Your name</h1><p class="resume-headline" data-preview="headline">Your target role</p><p class="resume-contact" id="preview-contact"></p><p class="preserve-lines" data-preview="links"></p></header>
-@foreach(var item in new[]{("summary", "PROFILE"), ("education", "EDUCATION"), ("experience", "EXPERIENCE"), ("projects", "PROJECTS"), ("skills", "SKILLS"), ("certifications", "CERTIFICATIONS & ACHIEVEMENTS") }){
-<section data-resume-section="@item.Item1" hidden><h2>@item.Item2</h2><p class="preserve-lines" data-preview="@item.Item1"></p></section>
+<div id="resume-section-list">
+@foreach(var item in new[]{("summary", "PROFESSIONAL PROFILE"), ("education", "EDUCATION"), ("experience", "EXPERIENCE"), ("projects", "SELECTED PROJECTS"), ("skills", "CORE SKILLS"), ("certifications", "CERTIFICATIONS & ADDITIONAL DETAILS") }){
+<section data-resume-section="@item.Item1" hidden><h2 data-section-heading="@item.Item1" data-default-title="@item.Item2">@item.Item2</h2><p class="preserve-lines" data-preview="@item.Item1"></p></section>
 }
-<p id="resume-empty" class="muted no-print">Add your education, skills, and projects to see your resume take shape.</p>
+</div>
+<p id="resume-empty" class="resume-empty-state no-print"><strong>Your resume preview is ready.</strong><span>Add your profile, education, skills, or experience to see each section appear here.</span><span>Only details you enter will be included in your saved PDF.</span></p>
 </article><div class="tool-actions no-print"><a href="#editor-heading">↑ Back to editor</a><button class="primary-button" type="submit" form="resume-form">Print / save PDF</button></div></section></div>
 <section class="tool-card resume-help no-print"><h2>A little guidance goes a long way.</h2><p>Use specific results, keep dates consistent, and tailor your skills to the opening. Include only experience and achievements you can explain in an interview.</p><div class="tool-actions"><a asp-action="Services">Get optional professional help →</a><a href="/">Find jobs for your new resume →</a></div></section>
 @section Scripts{<script src="~/js/resume-builder.js" asp-append-version="true"></script>}

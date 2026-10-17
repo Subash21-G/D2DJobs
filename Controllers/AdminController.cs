@@ -72,7 +72,7 @@ public class AdminController(ApplicationDbContext db, IWebHostEnvironment enviro
         }
         if (db.ChangeTracker.HasChanges()) await db.SaveChangesAsync();
 
-        var totals = await db.Jobs.GroupBy(j => 1).Select(g => new { Total = g.Count(), Featured = g.Count(j => j.IsFeatured), Active = g.Count(j => j.IsActive && (j.AvailableFrom == null || j.AvailableFrom <= today) && (j.ExpiryDate == null || j.ExpiryDate >= today) && (j.WalkInEndDate.HasValue ? j.WalkInEndDate.Value.Date >= today : !j.WalkInDate.HasValue || j.WalkInDate.Value.Date >= today) && (j.SourcePostedDate ?? j.PostedDate).Date > today.AddDays(-30)) }).FirstOrDefaultAsync();
+        var totals = await db.Jobs.GroupBy(j => 1).Select(g => new { Total = g.Count(), Featured = g.Count(j => j.IsFeatured), Active = g.Count(j => j.IsActive && (j.AvailableFrom == null || j.AvailableFrom <= today) && (j.ExpiryDate == null || j.ExpiryDate >= today) && (j.WalkInEndDate.HasValue ? j.WalkInEndDate.Value.Date >= today : !j.WalkInDate.HasValue || j.WalkInDate.Value.Date >= today) && (j.SourcePostedDate ?? j.PostedDate).Date > today.AddDays(-30)) }).SingleOrDefaultAsync();
         var expiredCount = await db.Jobs.CountAsync(j => j.IsActive &&
             ((j.ExpiryDate.HasValue && j.ExpiryDate.Value.Date < today) ||
              (j.WalkInEndDate.HasValue ? j.WalkInEndDate.Value.Date < today : j.WalkInDate.HasValue && j.WalkInDate.Value.Date < today) ||

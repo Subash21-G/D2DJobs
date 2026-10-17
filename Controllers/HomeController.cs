@@ -136,7 +136,7 @@ public class HomeController : Controller
             Internship = g.Count(j => j.Category == "Internship Programs" || j.Category == "Internship"),
             Remote = g.Count(j => j.Category == "Work From Home Jobs" || j.Category == "WFH Jobs" || j.JobType == "Remote"),
             Core = g.Count(j => j.Category == "Core Engineering Jobs"), Bpo = g.Count(j => j.Category == "BPO / Support Jobs")
-        }).FirstOrDefaultAsync();
+        }).SingleOrDefaultAsync();
         // The hero count must describe the same filtered query that produced the displayed cards.
         ViewBag.TotalJobs = total;
         ViewBag.TrendingJobs = await available.OrderByDescending(j => j.ViewsCount).ThenByDescending(j => j.PostedDate).Take(5).ToListAsync();

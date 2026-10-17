@@ -41,21 +41,46 @@
 
     const whatsappPopup = document.querySelector('[data-whatsapp-popup]');
     const whatsappClose = document.querySelector('[data-whatsapp-close]');
+    let whatsappLauncher = document.querySelector('[data-whatsapp-launcher]');
     if (whatsappPopup && whatsappClose) {
-        const dismissalKey = 'd2djobs-whatsapp-invitation-dismissed';
+        if (!whatsappLauncher) {
+            const groupLink = whatsappPopup.querySelector('.whatsapp-popup-copy>a');
+            const widget = whatsappPopup.closest('.whatsapp-widget');
+            if (groupLink && widget) {
+                whatsappLauncher = document.createElement('a');
+                whatsappLauncher.className = 'whatsapp-launcher';
+                whatsappLauncher.dataset.whatsappLauncher = '';
+                whatsappLauncher.href = groupLink.href;
+                whatsappLauncher.target = '_blank';
+                whatsappLauncher.rel = 'noopener noreferrer';
+                whatsappLauncher.setAttribute('aria-label', 'Join the D2DJobs WhatsApp group');
+                whatsappLauncher.hidden = true;
+                const icon = document.createElement('i');
+                icon.className = 'fa-brands fa-whatsapp';
+                icon.setAttribute('aria-hidden', 'true');
+                whatsappLauncher.append(icon);
+                widget.append(whatsappLauncher);
+            }
+        }
+    }
+    if (whatsappPopup && whatsappClose && whatsappLauncher) {
+        const dismissalKey = 'd2djobs-whatsapp-invitation-dismissed-v2';
         const wasDismissed = () => { try { return sessionStorage.getItem(dismissalKey) === 'true'; } catch { return false; } };
-        whatsappClose.addEventListener('click', () => {
+        const dismissInvitation = () => {
             whatsappPopup.hidden = true;
+            whatsappLauncher.hidden = false;
             try { sessionStorage.setItem(dismissalKey, 'true'); } catch {}
-        });
+        };
+        whatsappClose.addEventListener('click', dismissInvitation);
         document.addEventListener('keydown', event => {
             if (event.key === 'Escape' && !whatsappPopup.hidden) {
-                whatsappPopup.hidden = true;
+                dismissInvitation();
             }
         });
-        if (!wasDismissed()) window.setTimeout(() => {
+        if (wasDismissed()) whatsappLauncher.hidden = false;
+        else window.setTimeout(() => {
             if (document.visibilityState === 'visible') whatsappPopup.hidden = false;
-        }, 2500);
+        }, 900);
     }
 })();
 

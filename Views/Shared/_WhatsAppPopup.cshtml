@@ -4,15 +4,27 @@
     <div class="whatsapp-widget" data-whatsapp-widget>
         <aside class="whatsapp-popup" id="whatsapp-invitation" data-whatsapp-popup hidden aria-labelledby="whatsapp-popup-heading">
             <button class="whatsapp-close" type="button" data-whatsapp-close aria-label="Dismiss WhatsApp invitation"><i class="fa-solid fa-xmark" aria-hidden="true"></i></button>
-            <span class="whatsapp-popup-icon"><i class="fa-brands fa-whatsapp" aria-hidden="true"></i></span>
             <div class="whatsapp-popup-copy">
-                <h2 id="whatsapp-popup-heading">Get job updates on WhatsApp</h2>
-                <p>Follow D2DJobs for fresher jobs, internships and off-campus drives.</p>
-                <a href="@SiteSettings.Value.WhatsAppUrl" target="_blank" rel="noopener noreferrer">Join the WhatsApp group <i class="fa-solid fa-arrow-up-right-from-square" aria-hidden="true"></i></a>
+                <div class="whatsapp-popup-heading-row">
+                    <span class="whatsapp-popup-icon"><i class="fa-brands fa-whatsapp" aria-hidden="true"></i></span>
+                    <span class="whatsapp-popup-community">
+                        <span class="whatsapp-popup-label">D2DJobs Community</span>
+                        <span class="whatsapp-popup-status"><i class="fa-regular fa-circle-check" aria-hidden="true"></i> Free job updates</span>
+                    </span>
+                </div>
+                <h2 id="whatsapp-popup-heading">Fresh jobs on WhatsApp.</h2>
+                <p>Jobs and internships, delivered.</p>
+                <ul class="whatsapp-popup-tags" aria-label="Job categories">
+                    <li>IT &amp; Non-IT</li><li>Freshers</li><li>Internships</li>
+                </ul>
+                <a class="whatsapp-join-button" href="@SiteSettings.Value.WhatsAppUrl" target="_blank" rel="noopener noreferrer" aria-label="Join the D2DJobs WhatsApp group">
+                    <i class="fa-brands fa-whatsapp whatsapp-join-icon" aria-hidden="true"></i><span>Join WhatsApp Group</span><i class="fa-solid fa-arrow-up-right-from-square whatsapp-join-arrow" aria-hidden="true"></i>
+                </a>
+                <small class="whatsapp-popup-note">Free to join <span aria-hidden="true">·</span> Leave anytime</small>
             </div>
         </aside>
-        <a class="whatsapp-launcher" href="@SiteSettings.Value.WhatsAppUrl" target="_blank" rel="noopener noreferrer" aria-label="Join the D2DJobs WhatsApp group">
-            <i class="fa-brands fa-whatsapp" aria-hidden="true"></i><span>Join WhatsApp</span>
+        <a class="whatsapp-launcher" data-whatsapp-launcher href="@SiteSettings.Value.WhatsAppUrl" target="_blank" rel="noopener noreferrer" aria-label="Join the D2DJobs WhatsApp group" hidden>
+            <i class="fa-brands fa-whatsapp" aria-hidden="true"></i>
         </a>
     </div>
 }

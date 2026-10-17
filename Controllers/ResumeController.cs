@@ -8,6 +8,8 @@ public class ResumeController(ApplicationDbContext db) : Controller
 {
     [HttpGet("")]
     public IActionResult Index() => View();
+    [HttpGet("templates")]
+    public IActionResult Templates() => View();
     [HttpGet("services")]
     [ResponseCache(NoStore = true, Location = ResponseCacheLocation.None)]
     public IActionResult Services() => View(new ResumeServiceRequest());

@@ -79,6 +79,7 @@ if (builder.Configuration.GetValue<bool>("AdminSettings:BootstrapEnabled"))
 }
 if (!app.Environment.IsDevelopment()) { app.UseExceptionHandler("/Home/Error"); app.UseHsts(); }
 app.UseStatusCodePagesWithReExecute("/Home/StatusCodePage", "?code={0}");
+if (!app.Environment.IsDevelopment()) app.UseHttpsRedirection();
 if (!app.Environment.IsDevelopment() && Uri.TryCreate(app.Configuration["SiteSettings:SiteUrl"], UriKind.Absolute, out var canonicalSite))
 {
     var alternateHost = canonicalSite.Host.StartsWith("www.", StringComparison.OrdinalIgnoreCase)
@@ -95,7 +96,6 @@ if (!app.Environment.IsDevelopment() && Uri.TryCreate(app.Configuration["SiteSet
         await next();
     });
 }
-app.UseHttpsRedirection();
 app.Use(async (context, next) =>
 {
     context.Response.Headers["X-Content-Type-Options"] = "nosniff";
