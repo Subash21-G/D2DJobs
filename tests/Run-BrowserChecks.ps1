@@ -64,6 +64,34 @@ try {
     if (-not $ready) { throw 'Test server did not start.' }
     node $TestScript
     if ($LASTEXITCODE -ne 0) { throw 'Browser regression failed.' }
+    if ($VerifyAdGating) {
+        # Reuse the isolated five-job database to verify deployment overrides.
+        Stop-Process -Id $server.Id
+        $server.WaitForExit()
+        $server = $null
+        foreach ($scenario in @(
+            @{ Name = 'primary-disabled'; Environment = 'Production'; Primary = 'false'; Secondary = 'true'; PrimaryExpected = $false; SecondaryExpected = $true },
+            @{ Name = 'secondary-disabled'; Environment = 'Production'; Primary = 'true'; Secondary = 'false'; PrimaryExpected = $true; SecondaryExpected = $false },
+            @{ Name = 'both-disabled'; Environment = 'Production'; Primary = 'false'; Secondary = 'false'; PrimaryExpected = $false; SecondaryExpected = $false },
+            @{ Name = 'development'; Environment = 'Development'; Primary = 'true'; Secondary = 'true'; PrimaryExpected = $false; SecondaryExpected = $false }
+        )) {
+            $env:ASPNETCORE_ENVIRONMENT = $scenario.Environment
+            $env:Monetag__Enabled = $scenario.Primary
+            $env:Monetag__SecondaryEnabled = $scenario.Secondary
+            $server = Start-Process -FilePath dotnet -ArgumentList @((Join-Path $output 'JobForFresher.dll')) -WorkingDirectory $repo -WindowStyle Hidden -PassThru -RedirectStandardOutput (Join-Path $content ($scenario.Name + '.log')) -RedirectStandardError (Join-Path $content ($scenario.Name + '.error.log'))
+            $html = & curl.exe --insecure --silent --show-error --retry 10 --retry-connrefused --retry-delay 1 --max-time 15 "https://localhost:$Port/jobs"
+            if ($LASTEXITCODE -ne 0) { throw "Could not load jobs page for $($scenario.Name)." }
+            $hasPrimary = [bool]($html -match 'https://nap5k\.com/tag\.min\.js')
+            $hasSecondary = [bool]($html -match 'https://quge5\.com/88/tag\.min\.js')
+            if ($hasPrimary -ne $scenario.PrimaryExpected -or $hasSecondary -ne $scenario.SecondaryExpected) {
+                throw "Monetag tag gate failed for $($scenario.Name): primary=$hasPrimary secondary=$hasSecondary."
+            }
+            Stop-Process -Id $server.Id
+            $server.WaitForExit()
+            $server = $null
+        }
+        Write-Output 'Monetag enabled-flag and Development gating: 4 scenarios passed.'
+    }
     Write-Output "Isolated database retained for inspection: $database"
 } finally {
     if ($server -and -not $server.HasExited) { Stop-Process -Id $server.Id }
