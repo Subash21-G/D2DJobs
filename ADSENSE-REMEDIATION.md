@@ -1,5 +1,21 @@
 # AdSense low-value-content remediation
 
+## 23 October 2026: current AdSense decision and next editorial actions
+
+The owner supplied an AdSense screenshot showing **Needs attention: Low value content** for d2djobs.in. Site ownership is verified and ads.txt is authorized. This identifies Google's stated reason, but Google did not identify individual failing URLs. Do not request another review until the public content has been checked and improved.
+
+The public homepage showed seven openings on 23 October. In particular, **Sr Software Engineer - Amazon Now** requires 5+ years of professional experience while the site presents itself as a fresher job board. An editor should remove that opening from this catalogue unless the site's scope and navigation are deliberately broadened. Check the other six vacancy-specific employer pages for current availability, correct eligibility, exact application destination and original editorial value. Do not change the verification date until a person has actually checked the employer's notice. Do not infer that a page is approved merely because it passes the application's automated quality gate.
+
+This code revision removes a repeated category-preparation article from every job detail page so the vacancy-specific information is the main content. The career-resource library remains available as separate guides. Empty category pages now carry noindex and are omitted from the sitemap. An unused service worker that imported third-party code from 5gvci.com has been removed from this checkout; verify the deployed host and any previously registered browser service workers separately.
+
+The admin import workflow previously activated every imported row and stamped the current date as a source verification. Creating or activating a row also stamped that date. Those behaviors have been removed: imports stay inactive with no verification date, and the editor must enter the actual source-check date on the job form. Existing production rows are not changed automatically. Audit their verification dates against actual source checks before requesting review.
+
+Listings that explicitly state a minimum of 5–9+ years in the experience field are now excluded from the fresher catalogue and flagged for admin review. This catches the sampled Amazon senior role after deployment; it is a scope safeguard, not a substitute for manually assessing every role's eligibility.
+
+The 23 October public-source spot check found that the Accenture Infra Tech Support Practitioner source URL for Job No. 14332101 redirected to Accenture's general job-search page. Treat that listing as unverified until an editor finds the exact vacancy and confirms applications remain open; deactivate it if the opening has closed. The two sampled HCLTech records (168116 and 162103), Accenture Service Desk record (14067263), and Amazon internship record (10541345) returned vacancy-specific employer pages in the web fetch. A returned page alone does not prove that the application button works or that the posting remains open, so check those manually as well.
+
+These source changes do not update the production database or deployed website. The site owner must review the live job inventory, deploy the revision, verify the public pages, and only then request an AdSense review. Approval remains Google's decision.
+
 Reviewed: 12 October 2026. This is a sampled content and implementation audit, not confirmation of AdSense approval.
 
 ## What the live-site sample showed

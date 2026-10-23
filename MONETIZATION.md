@@ -1,5 +1,13 @@
 # Monetization setup
 
+## Monetag In-Page Push
+
+The standalone Monetag zone `11852263` uses the exact publisher-supplied tag from 23 October 2026 (`https://nap5k.com/tag.min.js`). `Monetag:Enabled` and `Monetag:ZoneId` control it. The tag loads once in the document head on clean public job-listing pages with at least five vetted results and on career-resource article pages. It is absent from search/filter results, empty listings, job details, legal pages, admin pages and the resume builder. The separate AdSense approval and slot gate remains unchanged.
+
+This zone is In-Page Push only. Do not replace it with a MultiTag, popunder, notification subscription tag or Direct Link without reviewing the behavior and site policies. The privacy policy names Monetag. Disable immediately with `Monetag__Enabled=false` if ad behavior interferes with navigation or the consent setup. Monetag's Installation Check and actual ad delivery must be verified on the deployed domain; the isolated browser tests block external requests.
+
+The owner also supplied `https://quge5.com/88/tag.min.js` for zone `284842` and requested that it be added with the other tags. It is configured as `Monetag:SecondaryEnabled` and `SecondaryZoneId`, and loads on the same curated pages. Its dashboard format has not been confirmed. While this second tag is enabled, the code suppresses Google ad units because an unverified format might open a popunder. Set `Monetag__SecondaryEnabled=false` if the format is OnClick, MultiTag or otherwise unsuitable for the site's AdSense plans. The supplied `sw(3).js` is hosted as `/sw.js` and belongs to separate Push Notifications zone `11867691`; hosting the file does not register a service worker or establish that push ads are active. Verify the exact zone associations and behavior in Monetag after deployment.
+
 The portal includes category browsing, search, saved jobs, job detail pages and two responsive AdSense placements. `/Home/Advertise` accepts partnership enquiries through the existing business email. Ads are disabled by default; no dummy publisher code is sent to Google.
 
 Add an `Advertising` section to your deployment's appsettings configuration (or use equivalent environment variables):

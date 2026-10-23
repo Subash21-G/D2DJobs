@@ -17,6 +17,8 @@ try {
     $env:AdminSettings__Password = [Guid]::NewGuid().ToString('N') + '!Test1'
     $env:Advertising__Enabled = 'false'
     $env:Advertising__PublisherId = 'ca-pub-0000000000000000'
+    $env:Monetag__Enabled = 'false'
+    $env:Monetag__SecondaryEnabled = 'false'
     if ($VerifyAdGating) {
         # Fake ad configuration only, inside the isolated test server. The content-quality
         # browser script blocks all non-local requests so no ad requests are sent.
@@ -28,6 +30,10 @@ try {
         $env:Advertising__ConsentConfigured = 'true'
         $env:Advertising__Slots__ListingInline = '0000000000'
         $env:Advertising__Slots__JobSidebar = '0000000000'
+        $env:Monetag__Enabled = 'true'
+        $env:Monetag__ZoneId = '00000000'
+        $env:Monetag__SecondaryEnabled = 'true'
+        $env:Monetag__SecondaryZoneId = '00000001'
     }
     $env:TEST_ADMIN_USER = $env:AdminSettings__UserName
     $env:TEST_ADMIN_PASSWORD = $env:AdminSettings__Password

@@ -202,15 +202,13 @@ public class AdminController(ApplicationDbContext db, IWebHostEnvironment enviro
                 job.Slug = Slug(job.Title);
                 job.PostedDate = DateTime.Now;
                 job.ImportedUtc = DateTime.UtcNow;
-                job.IsActive = true;
-                // The uploader confirms they checked the source before importing; record that check now.
-                job.LastVerifiedUtc = DateTime.UtcNow;
+                job.IsActive = false;
+                job.LastVerifiedUtc = null;
             }
             await db.Jobs.AddRangeAsync(jobs, cancellationToken);
             await db.SaveChangesAsync(cancellationToken);
             input.ImportedCount = jobs.Count;
-            input.PublishedCount = jobs.Count;
-            input.Summary = $"Accepted {jobs.Count}; rejected {input.RejectedCount}; imported {input.PublishedCount} active listing(s). Current listings that pass automatic content, source, duplicate and expiry checks appear publicly.";
+            input.Summary = $"Accepted {jobs.Count}; rejected {input.RejectedCount}; imported {jobs.Count} draft listing(s) for source and editorial review.";
             return View(input);
         }
         catch (InvalidDataException)
@@ -233,7 +231,6 @@ public class AdminController(ApplicationDbContext db, IWebHostEnvironment enviro
         if (!ModelState.IsValid) return View(input);
         var job = new Job(); CopyFields(input, job); job.CompanyLogo = logo;
         job.Slug = Slug(job.Title); job.PostedDate = DateTime.Now; job.ImportedUtc = DateTime.UtcNow;
-        if (job.IsActive) job.LastVerifiedUtc = DateTime.UtcNow;
         db.Jobs.Add(job); await db.SaveChangesAsync();
         return RedirectToAction(nameof(Index));
     }
@@ -250,10 +247,8 @@ public class AdminController(ApplicationDbContext db, IWebHostEnvironment enviro
         if (!ModelState.IsValid) return View(input);
         var logo = await SaveLogo(logoFile); if (!ModelState.IsValid) return View(input);
         var previousLogo = job.CompanyLogo;
-        var wasActive = job.IsActive;
         CopyFields(input, job); if (logo != null) job.CompanyLogo = logo;
         job.Slug ??= Slug(job.Title);
-        if (!wasActive && job.IsActive) job.LastVerifiedUtc = DateTime.UtcNow;
         await db.SaveChangesAsync(); if (logo != null) DeleteLogo(previousLogo);
         return RedirectToAction(nameof(Index));
     }

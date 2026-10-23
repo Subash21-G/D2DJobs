@@ -29,6 +29,7 @@ public static class JobQuality
     {
         Expression<Func<Job, bool>> complete = j =>
         j.Slug != null && j.Slug.Trim() != "" && j.Title.Trim().Length >= 5 && j.CompanyName.Trim().Length >= 2 && j.Role.Trim().Length >= 3 && j.Location.Trim().Length >= 2 &&
+        !j.Experience.ToLower().Contains("5+ years") && !j.Experience.ToLower().Contains("6+ years") && !j.Experience.ToLower().Contains("7+ years") && !j.Experience.ToLower().Contains("8+ years") && !j.Experience.ToLower().Contains("9+ years") &&
         j.Qualification.Trim().Length >= 10 && j.Skills.Trim().Length >= MinimumSkillsLength &&
         j.Description.Trim().Length >= MinimumDescriptionLength &&
         j.SelectionProcess != null && j.SelectionProcess.Trim().Length >= MinimumSelectionProcessLength &&
@@ -157,6 +158,8 @@ public static class JobQuality
         AddIf(issues, job.CompanyName, 2, "company name");
         AddIf(issues, job.Role, 3, "role");
         AddIf(issues, job.Location, 2, "location");
+        if (new[] { "5+ years", "6+ years", "7+ years", "8+ years", "9+ years" }.Any(value => job.Experience.Contains(value, StringComparison.OrdinalIgnoreCase)))
+            issues.Add("senior experience requirement is outside this fresher-job catalogue");
         AddIf(issues, job.Qualification, 10, "qualification details");
         AddIf(issues, job.Skills, MinimumSkillsLength, "skills and requirements");
         AddIf(issues, job.Description, MinimumDescriptionLength, "substantial job description");

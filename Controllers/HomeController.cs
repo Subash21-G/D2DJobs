@@ -121,10 +121,11 @@ public class HomeController : Controller
         };
         var result = await ordered.Skip((page - 1) * pageSize).Take(pageSize).ToListAsync();
         ViewBag.CurrentPage = page; ViewBag.TotalPages = pages; ViewBag.ResultCount = total;
-        ViewData["ShowAds"] = result.Count > 0;
-        // Clean homepage and category routes keep their editorial value when there are no open jobs.
+        ViewData["ShowAds"] = result.Count >= 5;
+        ViewData["ShowMonetag"] = result.Count >= 5 && Request.Query.Count == 0;
+        // Empty category pages are navigation-only pages; leave the homepage indexable.
         // Search and pagination URLs are already noindexed by _SeoMeta.
-        ViewData["NoIndex"] = false;
+        ViewData["NoIndex"] = total == 0 && (categorySlug != null || ViewData["AllJobs"] is true);
         ViewBag.Search = search; ViewBag.Category = category; ViewBag.Location = location; ViewBag.Experience = experience; ViewBag.Sort = sort;
         ViewBag.Qualification = qualification;
         var totals = await available.GroupBy(j => 1).Select(g => new {
@@ -309,6 +310,7 @@ public class HomeController : Controller
         ViewData["Title"] = article.Title + " | D2DJobs";
         ViewData["MetaDescription"] = article.Summary;
         ViewData["Canonical"] = Origin + "/resources/" + Uri.EscapeDataString(article.Slug);
+        ViewData["ShowMonetag"] = true;
         return View(article);
     }
     public IActionResult Privacy() => RedirectToAction(nameof(PrivacyPolicy));
@@ -354,13 +356,15 @@ public class HomeController : Controller
         XNamespace ns = "http://www.sitemaps.org/schemas/sitemap/0.9";
         var origin = Origin;
         var root = new XElement(ns + "urlset");
-        var staticPaths = new List<string> { "/", "/jobs", "/Home/About", "/editorial-policy", "/career-guide", "/resources", "/Home/Contact", "/Home/PrivacyPolicy", "/Home/Terms", "/Home/Disclaimer", "/Home/Advertise", "/job-alerts", "/resume-builder" };
+        var staticPaths = new List<string> { "/", "/Home/About", "/editorial-policy", "/career-guide", "/resources", "/Home/Contact", "/Home/PrivacyPolicy", "/Home/Terms", "/Home/Disclaimer", "/resume-builder" };
+        if (await indexable.AnyAsync()) staticPaths.Add("/jobs");
         foreach (var path in staticPaths)
             root.Add(new XElement(ns + "url", new XElement(ns + "loc", origin + path)));
         foreach (var article in CareerResources.All)
             root.Add(new XElement(ns + "url", new XElement(ns + "loc", origin + "/resources/" + article.Slug), new XElement(ns + "lastmod", article.Updated.ToString("yyyy-MM-dd"))));
         foreach (var category in JobCategories.All)
-            root.Add(new XElement(ns + "url", new XElement(ns + "loc", origin + "/jobs/" + JobCategories.Slug(category))));
+            if (await CategoryJobs(indexable, category).AnyAsync())
+                root.Add(new XElement(ns + "url", new XElement(ns + "loc", origin + "/jobs/" + JobCategories.Slug(category))));
         foreach (var job in jobs.Where(j => !string.IsNullOrEmpty(j.Slug)))
             root.Add(new XElement(ns + "url", new XElement(ns + "loc", origin + "/job/" + Uri.EscapeDataString(job.Slug!))));
         return Content(new XDocument(new XDeclaration("1.0", "utf-8", null), root).ToString(), "application/xml");

@@ -211,7 +211,6 @@ else { <span class="application-unavailable">Application link unavailable</span>
 </article><aside class="jobs-sidebar"><section class="sidebar-panel"><div class="panel-heading"><h2>Similar opportunities</h2></div>@if (related.Count == 0) { <p class="muted">Explore all current openings to find your next opportunity.</p> }@foreach (var job in related) { <a class="compact-job" asp-action="Details" asp-route-slug="@job.Slug"><strong>@job.Title</strong><small>@job.CompanyName · @job.Location</small></a> }<a class="details-link" asp-route="category" asp-route-categorySlug="@JobCategories.Slug(Model.Category)">Browse @Model.Category &nearr;</a></section><section class="career-note"><span class="eyebrow">BEFORE YOU APPLY</span><h2>Make your application count.</h2><p>Highlight relevant projects, match your skills to the role and keep your contact details up to date.</p><a asp-action="SavedJobs">Your saved opportunities &nearr;</a></section></aside></div>
 <script type="application/ld+json">@Html.Raw(JsonSerializer.Serialize(breadcrumbSchema))</script>
 @if (ViewData["ShowJobPosting"] is true) { <script type="application/ld+json">@Html.Raw(JsonSerializer.Serialize(schema))</script> }
-<partial name="_CategoryPreparationGuide" model="CategoryPreparationGuides.ForJob(Model)" />
 
 
 

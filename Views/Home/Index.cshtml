@@ -12,7 +12,6 @@ bool filtered = batch.HasValue || !string.IsNullOrWhiteSpace(category + search +
 bool landing = ViewData["AllJobs"] is not true && !filtered && current == 1 && sort == "latest";
 ViewData["BodyClass"] = landing ? "landing-page" : "jobs-page";
 var categoryGuide = CategoryPreparationGuides.For(category);
-ViewData["Title"] = (string.IsNullOrEmpty(category) ? landing ? "Fresher jobs, internships & off-campus opportunities" : "All jobs" : category) + " | D2DJobs";
 string ResultsUrl(int targetPage) => string.IsNullOrEmpty(category)
     ? Url.Action("AllJobs", "Home", new { page = targetPage, search, location, experience, qualification, sort, batch }) ?? "/"
     : Url.RouteUrl("category", new { categorySlug = JobCategories.Slug(category), page = targetPage, search, location, experience, qualification, sort, batch }) ?? "/";

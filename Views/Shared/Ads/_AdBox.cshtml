@@ -1,9 +1,10 @@
 @model string
 @inject Microsoft.Extensions.Options.IOptions<JobForFresher.Models.AdvertisingOptions> AdSettings
+@inject Microsoft.Extensions.Options.IOptions<JobForFresher.Models.MonetagOptions> MonetagSettings
 @inject IWebHostEnvironment HostEnvironment
 @{
     var ads = AdSettings.Value;
-    var slot = ViewData["ShowAds"] is true && !HostEnvironment.IsDevelopment() ? ads.Slot(Model) : null;
+    var slot = ViewData["ShowAds"] is true && !HostEnvironment.IsDevelopment() && !MonetagSettings.Value.SecondaryReady ? ads.Slot(Model) : null;
 }
 @if (slot != null)
 {
