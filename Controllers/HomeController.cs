@@ -122,7 +122,13 @@ public class HomeController : Controller
         var result = await ordered.Skip((page - 1) * pageSize).Take(pageSize).ToListAsync();
         ViewBag.CurrentPage = page; ViewBag.TotalPages = pages; ViewBag.ResultCount = total;
         ViewData["ShowAds"] = result.Count >= 5;
-        ViewData["ShowMonetag"] = result.Count >= 5 && Request.Query.Count == 0;
+        // Campaign attribution does not change the listing content. Keep ads off
+        // search, filter, sort and pagination URLs, including mixed queries.
+        var onlyTrackingParameters = Request.Query.Keys.All(key =>
+            key.StartsWith("utm_", StringComparison.OrdinalIgnoreCase) ||
+            key.Equals("gclid", StringComparison.OrdinalIgnoreCase) ||
+            key.Equals("fbclid", StringComparison.OrdinalIgnoreCase));
+        ViewData["ShowMonetag"] = result.Count >= 5 && onlyTrackingParameters;
         // Empty category pages are navigation-only pages; leave the homepage indexable.
         // Search and pagination URLs are already noindexed by _SeoMeta.
         ViewData["NoIndex"] = total == 0 && (categorySlug != null || ViewData["AllJobs"] is true);
