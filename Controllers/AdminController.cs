@@ -83,7 +83,9 @@ public class AdminController(ApplicationDbContext db, IWebHostEnvironment enviro
         if (!string.IsNullOrEmpty(category)) jobs = jobs.Where(j => j.Category == category);
         jobs = status switch { "Active" => jobs.Where(j => j.IsActive && (j.AvailableFrom == null || j.AvailableFrom <= today) && (j.ExpiryDate == null || j.ExpiryDate >= today) && (j.WalkInEndDate.HasValue ? j.WalkInEndDate.Value.Date >= today : !j.WalkInDate.HasValue || j.WalkInDate.Value.Date >= today) && (j.SourcePostedDate ?? j.PostedDate).Date > today.AddDays(-30)), "Inactive" => jobs.Where(j => !j.IsActive), "Expired" => jobs.Where(j => j.IsActive && ((j.ExpiryDate.HasValue && j.ExpiryDate.Value.Date < today) || (j.WalkInEndDate.HasValue ? j.WalkInEndDate.Value.Date < today : j.WalkInDate.HasValue && j.WalkInDate.Value.Date < today) || (j.SourcePostedDate ?? j.PostedDate).Date <= today.AddDays(-30))), _ => jobs };
         var recentJobsForDuplicates = db.Jobs.AsNoTracking()
-            .Where(j => j.IsActive && (j.AvailableFrom == null || j.AvailableFrom <= today) && (j.ExpiryDate == null || j.ExpiryDate >= today) && (j.SourcePostedDate ?? j.PostedDate).Date > today.AddDays(-30));
+            .Where(j => j.IsActive && (j.AvailableFrom == null || j.AvailableFrom <= today) && (j.ExpiryDate == null || j.ExpiryDate >= today) &&
+                (j.WalkInEndDate.HasValue ? j.WalkInEndDate.Value.Date >= today : !j.WalkInDate.HasValue || j.WalkInDate.Value.Date >= today) &&
+                (j.SourcePostedDate ?? j.PostedDate).Date > today.AddDays(-30));
         // The same application URL attached to materially different role/company
         // details is a signal for an editor to compare with the source posting.
         var detailsMismatchIds = recentJobsForDuplicates.Where(j => recentJobsForDuplicates.Any(other =>
@@ -156,7 +158,7 @@ public class AdminController(ApplicationDbContext db, IWebHostEnvironment enviro
         if (pageJobs.Count > 0)
         {
             var pageIds = pageJobs.Select(job => job.Id).ToArray();
-            pagePubliclyDiscoverableIds = (await recentJobsForDuplicates.Where(JobQuality.ReadyForIndex(verificationCutoff)).Where(j => !duplicateIds.Contains(j.Id)).Select(j => j.Id).Where(id => pageIds.Contains(id)).ToListAsync()).ToHashSet();
+            pagePubliclyDiscoverableIds = (await recentJobsForDuplicates.Select(j => j.Id).Where(id => pageIds.Contains(id)).ToListAsync()).ToHashSet();
         }
         ViewBag.PubliclyDiscoverableJobIds = pagePubliclyDiscoverableIds;
         return View(pageJobs);
@@ -203,12 +205,12 @@ public class AdminController(ApplicationDbContext db, IWebHostEnvironment enviro
                 job.PostedDate = DateTime.Now;
                 job.ImportedUtc = DateTime.UtcNow;
                 job.IsActive = true;
-                job.LastVerifiedUtc = DateTime.UtcNow;
+                job.LastVerifiedUtc = null;
             }
             await db.Jobs.AddRangeAsync(jobs, cancellationToken);
             await db.SaveChangesAsync(cancellationToken);
             input.ImportedCount = jobs.Count;
-            input.Summary = $"Accepted {jobs.Count}; rejected {input.RejectedCount}; imported {jobs.Count} active listing(s). Listings that meet public content and date checks appear automatically.";
+            input.Summary = $"Accepted {jobs.Count}; rejected {input.RejectedCount}; imported {jobs.Count} active listing(s). Current listings appear publicly without another approval step.";
             return View(input);
         }
         catch (InvalidDataException)

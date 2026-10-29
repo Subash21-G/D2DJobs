@@ -24,27 +24,10 @@ public class HomeController : Controller
         _savedJobsProtector = protection.CreateProtector("JobForFresher.SavedJobs.v1");
     }
     private IQueryable<Job> AvailableJobs() => _context.Jobs.AsNoTracking()
-        .Where(j => j.IsActive && (j.AvailableFrom == null || j.AvailableFrom <= DateTime.Today) && (j.ExpiryDate == null || j.ExpiryDate >= DateTime.Today) && (j.SourcePostedDate ?? j.PostedDate).Date > DateTime.Today.AddDays(-30));
-    private IQueryable<Job> DiscoverableJobs()
-    {
-        var recent = AvailableJobs();
-        // Active remains the editor's publication control. The full SQL-translatable
-        // quality predicate applies the same automatic content, source, date and
-        // application checks to every public discovery surface.
-        var checkedJobs = recent.Where(JobQuality.ReadyForIndex(JobQuality.VerificationCutoff()));
-        return checkedJobs.Where(job => !recent.Any(other => other.Id != job.Id &&
-            (
-                (job.ApplyLink != "" && job.ApplyLink == other.ApplyLink) ||
-                (job.CompanyName.Trim().ToLower().Replace(" private limited", "").Replace(" pvt. ltd.", "").Replace(" pvt ltd", "").Replace(" limited", "").Replace(" ltd.", "").Replace(" ltd", "").Trim() ==
-                 other.CompanyName.Trim().ToLower().Replace(" private limited", "").Replace(" pvt. ltd.", "").Replace(" pvt ltd", "").Replace(" limited", "").Replace(" ltd.", "").Replace(" ltd", "").Trim() &&
-                 job.Role.Trim() != "" && job.Role.Trim().ToLower() == other.Role.Trim().ToLower() &&
-                 job.Location.Trim() != "" && job.Location.Trim().ToLower() == other.Location.Trim().ToLower()) ||
-                (job.ApplicationInstructions != null && job.ApplicationInstructions.Trim() != "" &&
-                 job.ApplicationInstructions.Trim() == other.ApplicationInstructions!.Trim()) ||
-                (job.EditorialNote != null && job.EditorialNote.Trim() != "" &&
-                 job.EditorialNote.Trim() == other.EditorialNote!.Trim())
-            )));
-    }
+        .Where(j => j.IsActive && (j.AvailableFrom == null || j.AvailableFrom <= DateTime.Today) && (j.ExpiryDate == null || j.ExpiryDate >= DateTime.Today) &&
+            (j.WalkInEndDate.HasValue ? j.WalkInEndDate.Value.Date >= DateTime.Today : !j.WalkInDate.HasValue || j.WalkInDate.Value.Date >= DateTime.Today) &&
+            (j.SourcePostedDate ?? j.PostedDate).Date > DateTime.Today.AddDays(-30));
+    private IQueryable<Job> DiscoverableJobs() => AvailableJobs();
     private static IQueryable<Job> CategoryJobs(IQueryable<Job> query, string category) => category switch
     {
         "Off Campus" => query.Where(j => j.Category == "Off Campus" || j.SubCategory == "Off Campus Drive"),
@@ -106,7 +89,7 @@ public class HomeController : Controller
             _ => "Browse current fresher jobs, off-campus drives and internships in India. Filter openings by graduation batch, qualification and location."
         };
         ViewData["Canonical"] = Origin + (categorySlug != null ? "/jobs/" + categorySlug : ViewData["AllJobs"] is true ? "/jobs" : "/");
-        // Public discovery only includes listings with current editorial and source checks.
+        // The administrator's Active setting controls publication for current jobs.
         var available = DiscoverableJobs();
         var jobs = ApplyDiscoveryFilters(available, search, category, location, experience, qualification, batch);
         var total = await jobs.CountAsync();
@@ -248,7 +231,7 @@ public class HomeController : Controller
     }
     public async Task<IActionResult> ApplyClick(int id)
     {
-        // Apply actions must use exactly the same approval, freshness and duplicate gate as public discovery.
+        // Apply actions use the same active and date limits as public discovery.
         var job = await DiscoverableJobs().FirstOrDefaultAsync(j => j.Id == id);
         if (job == null || JobQuality.ContainsInternalApplicationFields(job.ApplicationInstructions)) return MissingJob();
         if (!Uri.TryCreate(job.ApplyLink, UriKind.Absolute, out var link) || (link.Scheme != Uri.UriSchemeHttps && link.Scheme != Uri.UriSchemeHttp))

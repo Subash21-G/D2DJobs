@@ -101,7 +101,7 @@ const nodePath = require('node:path');
     const importedSupportedEdit = await page.locator('a[href^="/Admin/Edit/"]').first().getAttribute('href');
     await page.goto(base + importedSupportedEdit);
     check(await page.locator('[name="SourceType"]').inputValue() === 'OfficialEmployer', 'Missing Excel source type is detected from a company-matching source domain');
-    check(await page.locator('[name="LastVerifiedUtc"]').inputValue() !== '', 'Admin upload records its publication check date');
+    check(await page.locator('[name="LastVerifiedUtc"]').inputValue() === '', 'Import does not fabricate a source verification date');
     const rows = JSON.parse(execFileSync('powershell.exe', ['-NoProfile', '-File', 'tests/Set-QualityFixtures.ps1'], { encoding: 'utf8' }));
     const path = title => '/job/' + rows.find(row => row.title === 'QUALITY ' + title).slug;
     const get = async url => {

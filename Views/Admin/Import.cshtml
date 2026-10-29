@@ -4,9 +4,9 @@
 <section class="admin-panel">
     <h2>Upload workbook</h2>
     <p>Use the first worksheet. The first row must contain <strong>Title</strong>. Other supported columns include CompanyName, Category, SourceType, SourcePostedDate (or PostedDate), SubCategory, Role, Location, Experience, Salary, JobType, Qualification, Skills, Description, ApplyLink, IsFeatured, ExpiryDate, BatchFrom, BatchTo, Eligibility, SelectionProcess, ApplicationInstructions, DocumentsRequired, EditorialNote, WalkInDate, WalkInStartDate, WalkInEndDate, WalkInVenue and OfficialSourceUrl. When SourceType is blank, the importer detects it from the source URL domain. Imported rows are activated automatically; workbook status and verification dates are ignored.</p>
-    <p class="muted">Upload only vacancies you have checked against their exact source. Public listings still need complete content, valid links and current dates. Malformed rows are rejected. Source posting dates are never inferred from the import date.</p>
+    <p class="muted">Upload only vacancies you have checked against their exact source. Active listings appear publicly while current; expired and scheduled listings stay hidden. Malformed rows are rejected. Source posting and verification dates are never inferred from the import date.</p>
     @if (!string.IsNullOrWhiteSpace(Model.Summary)) { <div class="notice" role="status"><strong>Import summary:</strong> @Model.Summary</div> }
-    @if (Model.ImportedCount > 0) { <p class="application-note"><strong>Upload complete</strong>Imported rows are active. Listings that meet the public checks appear automatically.</p><p><a class="secondary-button" asp-action="Index">View imported jobs</a></p> }
+    @if (Model.ImportedCount > 0) { <p class="application-note"><strong>Upload complete</strong>Imported rows are active. Current listings appear publicly without another approval step.</p><p><a class="secondary-button" asp-action="Index">View imported jobs</a></p> }
     <form method="post" enctype="multipart/form-data">
         <div asp-validation-summary="All" class="validation-summary" role="alert"></div>
         <div class="admin-field"><label asp-for="File">Excel workbook (.xlsx)</label><input asp-for="File" type="file" accept=".xlsx,application/vnd.openxmlformats-officedocument.spreadsheetml.sheet" required /></div>
