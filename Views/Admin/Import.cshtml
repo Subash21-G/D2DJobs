@@ -3,14 +3,14 @@
 <div class="admin-heading"><div><span class="eyebrow">BULK IMPORT</span><h1>Import jobs from Excel</h1><p class="muted">Upload an .xlsx workbook and add all valid rows to your job library.</p></div><a class="secondary-button" asp-action="Index">Back to jobs</a></div>
 <section class="admin-panel">
     <h2>Upload workbook</h2>
-    <p>Use the first worksheet. The first row must contain <strong>Title</strong>. Other supported columns include CompanyName, Category, SourceType, SourcePostedDate (or PostedDate), SubCategory, Role, Location, Experience, Salary, JobType, Qualification, Skills, Description, ApplyLink, IsFeatured, ExpiryDate, BatchFrom, BatchTo, Eligibility, SelectionProcess, ApplicationInstructions, DocumentsRequired, EditorialNote, WalkInDate, WalkInStartDate, WalkInEndDate, WalkInVenue and OfficialSourceUrl. When SourceType is blank, the importer detects it from the source URL domain. Imported rows remain inactive drafts; workbook status and verification dates are ignored.</p>
-    <p class="muted">Review each vacancy against its exact source, record the date of that check, and activate it individually. Malformed rows are rejected. Source posting dates are never inferred from the import date.</p>
+    <p>Use the first worksheet. The first row must contain <strong>Title</strong>. Other supported columns include CompanyName, Category, SourceType, SourcePostedDate (or PostedDate), SubCategory, Role, Location, Experience, Salary, JobType, Qualification, Skills, Description, ApplyLink, IsFeatured, ExpiryDate, BatchFrom, BatchTo, Eligibility, SelectionProcess, ApplicationInstructions, DocumentsRequired, EditorialNote, WalkInDate, WalkInStartDate, WalkInEndDate, WalkInVenue and OfficialSourceUrl. When SourceType is blank, the importer detects it from the source URL domain. Imported rows are activated automatically; workbook status and verification dates are ignored.</p>
+    <p class="muted">Upload only vacancies you have checked against their exact source. Public listings still need complete content, valid links and current dates. Malformed rows are rejected. Source posting dates are never inferred from the import date.</p>
     @if (!string.IsNullOrWhiteSpace(Model.Summary)) { <div class="notice" role="status"><strong>Import summary:</strong> @Model.Summary</div> }
-    @if (Model.ImportedCount > 0) { <p class="application-note"><strong>Upload complete</strong>Imported rows are drafts. Check the exact source and editorial details before activating each listing.</p><p><a class="secondary-button" asp-action="Index" asp-route-status="Inactive">Review imported drafts</a></p> }
+    @if (Model.ImportedCount > 0) { <p class="application-note"><strong>Upload complete</strong>Imported rows are active. Listings that meet the public checks appear automatically.</p><p><a class="secondary-button" asp-action="Index">View imported jobs</a></p> }
     <form method="post" enctype="multipart/form-data">
         <div asp-validation-summary="All" class="validation-summary" role="alert"></div>
         <div class="admin-field"><label asp-for="File">Excel workbook (.xlsx)</label><input asp-for="File" type="file" accept=".xlsx,application/vnd.openxmlformats-officedocument.spreadsheetml.sheet" required /></div>
         @if (Model.Errors.Count > 0) { <div class="validation-summary" role="alert"><strong>Rejected rows or workbook errors</strong><ul>@foreach (var error in Model.Errors) { <li>@error</li> }</ul></div> }
-        <button class="primary-button" type="submit">Validate and import jobs</button>
+        <button class="primary-button" type="submit">Upload and publish jobs</button>
     </form>
 </section>

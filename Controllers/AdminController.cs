@@ -202,13 +202,13 @@ public class AdminController(ApplicationDbContext db, IWebHostEnvironment enviro
                 job.Slug = Slug(job.Title);
                 job.PostedDate = DateTime.Now;
                 job.ImportedUtc = DateTime.UtcNow;
-                job.IsActive = false;
-                job.LastVerifiedUtc = null;
+                job.IsActive = true;
+                job.LastVerifiedUtc = DateTime.UtcNow;
             }
             await db.Jobs.AddRangeAsync(jobs, cancellationToken);
             await db.SaveChangesAsync(cancellationToken);
             input.ImportedCount = jobs.Count;
-            input.Summary = $"Accepted {jobs.Count}; rejected {input.RejectedCount}; imported {jobs.Count} draft listing(s) for source and editorial review.";
+            input.Summary = $"Accepted {jobs.Count}; rejected {input.RejectedCount}; imported {jobs.Count} active listing(s). Listings that meet public content and date checks appear automatically.";
             return View(input);
         }
         catch (InvalidDataException)
